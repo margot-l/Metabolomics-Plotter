@@ -112,137 +112,138 @@ plotPeaks <- function(plotData,integratedset,final.cmpd.df,
              map(~as.character(interaction(as.list(.[.!=fillPlot]), sep='\n', lex.order = TRUE)))%>%
              unlist()
            )
-  
-  plots <- plotData%>%
-    ungroup()%>%
-    group_by(normMethod,featureName,form,factors1,saveName)%>%
-    group_nest()%>%
-    mutate(savedPlot=
-             pmap(list(x=data,
-                       y=featureName,z=normMethod,
-                       a=factors1,b=form),
-                  function(x,y,z,a,b)
-                    ggplot(data=x,
-                           aes_string(y=yPlot,x="factors2"))+
-                    geom_boxplot(aes_string(fill=fillPlot,colour=fillPlot),
-                                 outlier.shape = NA,alpha=0.5)+
-                    geom_jitter(aes_string(shape=fillPlot),width=0.2)+
-                    theme_few(base_size=17)+
-                    theme(plot.title = element_text(size = 30,
-                                                    hjust=0.5),
-                          legend.title = element_text(size=20),
-                          legend.text = element_text(size = 20),
-                          aspect.ratio=1.0,
-                          axis.text =  element_text(size=25),
-                          axis.title=element_text(size=27))+
-                    geom_text(aes(label = x$factors5, x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
-                    coord_cartesian(clip="off")+
-                    labs(title=gsub("_","-",gsub("(_?[DL]+_)","",gsub("(?<=[0-9])_(?=[0-9])",",",gsub("(ic.?(a|A)cid)", "ate",y),perl=TRUE))),
-                         y=paste0("log2(",yPlot,")"),
-                         x="",
-                         caption=z
-                    )
-             )
-    )
-  if (plotPlot&plotP){
-    anovaMets <- plotData%>%
+  if (plotPlot){
+    plots <- plotData%>%
       ungroup()%>%
-      group_by(normMethod,featureName,factors1,saveName)%>%
+      group_by(normMethod,featureName,form,factors1,saveName)%>%
       group_nest()%>%
-      mutate(mets=map(data,~tidy(TukeyHSD(aov(as.formula(.$form),.)))))%>%
-      unnest(mets,.drop=F)
-    
-    sumMets <- anovaMets%>%
-      filter(adj.p.value<=0.1&term==factors1)%>%
-      filter(comparisonFinder(comparison)==TRUE)%>%
-      group_by(normMethod,featureName)%>%
-      summarise(n())
-    
-    plots1 <- suppressWarnings(plots%>%
-                                 semi_join(sumMets,by = c("featureName", "normMethod"))%>%
-                                 ungroup()%>%
-                                 mutate(savedPlot=pmap(list(x=data,
-                                                            y=featureName,z=normMethod,
-                                                            a=factors1,b=form,
-                                                            p=savedPlot),
-                                                       function(x,y,z,a,b,p)
-                                                         (p+
-                                                            geom_signif(data=tidy(TukeyHSD(aov(as.formula(b),data=x)))%>%
-                                                                          filter(term==a)%>%
-                                                                          filter(comparisonFinder(comparison)==TRUE)%>%
-                                                                          separate(comparison,into=c("group1","group2"),sep="-")%>%
-                                                                          mutate(p.signif=ifelse(adj.p.value<=0.0001, '****',
-                                                                                                 ifelse(adj.p.value<=0.001, "***", 
-                                                                                                        ifelse(adj.p.value<=0.01,"**",
-                                                                                                               ifelse(adj.p.value<=0.05,"*",
-                                                                                                                      ifelse(adj.p.value<=0.1,"'",
-                                                                                                                             "ns"))))))%>%
-                                                                          filter(adj.p.value<=0.1)%>%
-                                                                          mutate(range=plotData%>%
-                                                                                   filter(featureName==y&normMethod==z)%>%
-                                                                                   ungroup()%>%
-                                                                                   summarise(range=max(foldChange)-min(foldChange))%>%
-                                                                                   pull(),
-                                                                                 big.max.y=plotData%>%
-                                                                                   filter(featureName==y&normMethod==z)%>%
-                                                                                   ungroup()%>%
-                                                                                   summarise(max(foldChange))%>%
-                                                                                   pull())%>%
-                                                                          ungroup()%>%
-                                                                          add_tally()%>%
-                                                                          mutate(y.pos=big.max.y+range * 0.07 + range * 0.1* c(0:(n-1))),
-                                                                        aes(xmin=group1, xmax=group2, 
-                                                                            annotations=p.signif, 
-                                                                            y_position=y.pos),
-                                                                        manual=TRUE,vjust=0.6, textsize=10,size=0.7))))
-    )
-    
-    
-    plots <- rbind(plots1,anti_join(plots,sumMets,
-                                    by = c("normMethod", "featureName")))%>%
-      mutate(savedPlot=pmap(list(x=data,
-                                 y=featureName,z=normMethod,
-                                 a=factors1,b=form,
-                                 p=savedPlot),
-                            function(x,y,z,a,b,p)
-                              (p+
-                                 scale_x_discrete(breaks=x$factors2,
-                                                  labels=x$factors4)+
-                                 scale_y_continuous(
-                                   labels = scales::number_format(accuracy = 1,
-                                                                  decimal.mark = ','))+
-                                 scale_colour_discrete(name=fillPlot,
-                                                       breaks=waiver(),
-                                                       labels=fillVector,
-                                                       aesthetics=c("colour","fill"))+
-                                 scale_shape(name=fillPlot,
-                                             breaks=waiver(),
-                                             labels=fillVector)
-                              )
+      mutate(savedPlot=
+               pmap(list(x=data,
+                         y=featureName,z=normMethod,
+                         a=factors1,b=form),
+                    function(x,y,z,a,b)
+                      ggplot(data=x,
+                             aes_string(y=yPlot,x="factors2"))+
+                      geom_boxplot(aes_string(fill=fillPlot,colour=fillPlot),
+                                   outlier.shape = NA,alpha=0.5)+
+                      geom_jitter(aes_string(shape=fillPlot),width=0.2)+
+                      theme_few(base_size=17)+
+                      theme(plot.title = element_text(size = 30,
+                                                      hjust=0.5),
+                            legend.title = element_text(size=20),
+                            legend.text = element_text(size = 20),
+                            aspect.ratio=1.0,
+                            axis.text =  element_text(size=25),
+                            axis.title=element_text(size=27))+
+                      geom_text(aes(label = x$factors5, x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
+                      coord_cartesian(clip="off")+
+                      labs(title=gsub("_","-",gsub("(_?[DL]+_)","",gsub("(?<=[0-9])_(?=[0-9])",",",gsub("(ic.?(a|A)cid)", "ate",y),perl=TRUE))),
+                           y=paste0("log2(",yPlot,")"),
+                           x="",
+                           caption=z
+                      )
+               )
       )
+    if (plotPlot&plotP){
+      anovaMets <- plotData%>%
+        ungroup()%>%
+        group_by(normMethod,featureName,factors1,saveName)%>%
+        group_nest()%>%
+        mutate(mets=map(data,~tidy(TukeyHSD(aov(as.formula(.$form),.)))))%>%
+        unnest(mets,.drop=F)
+      
+      sumMets <- anovaMets%>%
+        filter(adj.p.value<=0.1&term==factors1)%>%
+        filter(comparisonFinder(comparison)==TRUE)%>%
+        group_by(normMethod,featureName)%>%
+        summarise(n())
+      
+      plots1 <- suppressWarnings(plots%>%
+                                   semi_join(sumMets,by = c("featureName", "normMethod"))%>%
+                                   ungroup()%>%
+                                   mutate(savedPlot=pmap(list(x=data,
+                                                              y=featureName,z=normMethod,
+                                                              a=factors1,b=form,
+                                                              p=savedPlot),
+                                                         function(x,y,z,a,b,p)
+                                                           (p+
+                                                              geom_signif(data=tidy(TukeyHSD(aov(as.formula(b),data=x)))%>%
+                                                                            filter(term==a)%>%
+                                                                            filter(comparisonFinder(comparison)==TRUE)%>%
+                                                                            separate(comparison,into=c("group1","group2"),sep="-")%>%
+                                                                            mutate(p.signif=ifelse(adj.p.value<=0.0001, '****',
+                                                                                                   ifelse(adj.p.value<=0.001, "***", 
+                                                                                                          ifelse(adj.p.value<=0.01,"**",
+                                                                                                                 ifelse(adj.p.value<=0.05,"*",
+                                                                                                                        ifelse(adj.p.value<=0.1,"'",
+                                                                                                                               "ns"))))))%>%
+                                                                            filter(adj.p.value<=0.1)%>%
+                                                                            mutate(range=plotData%>%
+                                                                                     filter(featureName==y&normMethod==z)%>%
+                                                                                     ungroup()%>%
+                                                                                     summarise(range=max(foldChange)-min(foldChange))%>%
+                                                                                     pull(),
+                                                                                   big.max.y=plotData%>%
+                                                                                     filter(featureName==y&normMethod==z)%>%
+                                                                                     ungroup()%>%
+                                                                                     summarise(max(foldChange))%>%
+                                                                                     pull())%>%
+                                                                            ungroup()%>%
+                                                                            add_tally()%>%
+                                                                            mutate(y.pos=big.max.y+range * 0.07 + range * 0.1* c(0:(n-1))),
+                                                                          aes(xmin=group1, xmax=group2, 
+                                                                              annotations=p.signif, 
+                                                                              y_position=y.pos),
+                                                                          manual=TRUE,vjust=0.6, textsize=10,size=0.7))))
       )
-  }else if (plotPlot&!plotP){
-    plots <- rbind(plots,anti_join(plots,sumMets,
-                                    by = c("normMethod", "featureName")))%>%
-      mutate(savedPlot=pmap(list(x=data,
-                                 y=featureName,z=normMethod,
-                                 a=factors1,b=form,
-                                 p=savedPlot),
-                            function(x,y,z,a,b,p)
-                              (p+
-                                 scale_y_continuous(
-                                   labels = scales::number_format(accuracy = 1,
-                                                                  decimal.mark = ',')))))
+      
+      
+      plots <- rbind(plots1,anti_join(plots,sumMets,
+                                      by = c("normMethod", "featureName")))%>%
+        mutate(savedPlot=pmap(list(x=data,
+                                   y=featureName,z=normMethod,
+                                   a=factors1,b=form,
+                                   p=savedPlot),
+                              function(x,y,z,a,b,p)
+                                (p+
+                                   scale_x_discrete(breaks=x$factors2,
+                                                    labels=x$factors4)+
+                                   scale_y_continuous(
+                                     labels = scales::number_format(accuracy = 1,
+                                                                    decimal.mark = ','))+
+                                   scale_colour_discrete(name=fillPlot,
+                                                         breaks=waiver(),
+                                                         labels=fillVector,
+                                                         aesthetics=c("colour","fill"))+
+                                   scale_shape(name=fillPlot,
+                                               breaks=waiver(),
+                                               labels=fillVector)
+                                )
+        )
+        )
+    }else if (plotPlot&!plotP){
+      plots <- rbind(plots,anti_join(plots,sumMets,
+                                      by = c("normMethod", "featureName")))%>%
+        mutate(savedPlot=pmap(list(x=data,
+                                   y=featureName,z=normMethod,
+                                   a=factors1,b=form,
+                                   p=savedPlot),
+                              function(x,y,z,a,b,p)
+                                (p+
+                                   scale_y_continuous(
+                                     labels = scales::number_format(accuracy = 1,
+                                                                    decimal.mark = ',')))))
+    }
+  }else if(!plotPeak){
+    plots <- plotData%>%
+      group_by(featureName,saveName)%>%
+      group_nest()
   }
   if (plotPeak){
-    plotData <- plotData%>%
-      filter(ifelse(is.null(met_list),!(featureName%in%met_list),featureName%in%met_list))%>%
-      group_by(featureName,normMethod,saveName)%>%
-      group_nest()
     plots <- plots%>%
-      mutate(savedPeak=map2(data,featureName,
-                            possibly(~plotEIC(integratedset,sampleName=sampleName,
-                                              featureName = .y,featureClass="met",
+      mutate(savedPeak=map(featureName,
+                            possibly(~plotEIC(integratedset,
+                                              featureName = .,featureClass="met",
                                               displayIntegrationRange=TRUE,integrationRangeAlphaScalar=0.8),
                                      NA)
       )
@@ -251,7 +252,7 @@ plotPeaks <- function(plotData,integratedset,final.cmpd.df,
   return(plots%>%
            left_join(sampleData%>%
                        select(featureName,KEGG_ID)%>%
-                       distinct(),by="featureName"))
+                       distinct(),by=c("featureName")))
 }
 
 savePeaks <- function(plots,final.cmpd.df,
@@ -295,7 +296,7 @@ savePeaks <- function(plots,final.cmpd.df,
   }
   
   if (savePeak){
-    map2(paste0(path,filteredPlots$saveName,"_peak",fileType),
+    map2(paste0(path,filteredPlots$saveName,"peak_",fileType),
          filteredPlots$savedPeak,
          base_width=widthPeak,base_height=heightPeak,
          base_aspect_ratio=0.8,
