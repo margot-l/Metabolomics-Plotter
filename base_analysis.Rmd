@@ -1,10 +1,11 @@
 ---
-title: "20190314_base_Analysis"
+title: "20221028_base_Analysis"
 author: "Margot Lautens"
-date: '2019-03-14'
+date: '2022-10-28'
 ---
 
 ### Summary
+
 The goal of this program is to process LC-MS data from output chromXtractor by first removing low quality peaks then normalizing and finding which peaks and pathways are significant for your interaction of interest. Plots and heatmaps can also be generated.
 
 ```{r setup, include=FALSE}
@@ -19,47 +20,69 @@ library(readr) # Required for easy loading
 
 ```
 
-
 ```{r}
-sample_sheet <- read.csv("base_sample_sheet.csv")
+sample_sheet <- read.csv("base_sample_sheet.csv")%>%
+  filter(KCN!="1KCN")
 View(sample_sheet)
 ```
 
-## Comments: 
+## Comments:
+
 ## 'sample_sheet' must include the following columns:
-##  - 'sampleName'
-##  - 'Replicate'
-##  - Each variable of interest (ie a drug treatment, mutant) must have one column
-##  - Variables cannot include '-' ie 'kynu-1' should be written as 'kynu1'
-##  - For concentrations, '0var' should be the buffer only and each concentration that follows ##    '1col1', '2col1', etc with 'col1' as the column name ie a 'KCN' column would have '0KCN'
-##    and '1KCN' while a 'Rot' column would have '0Rot' and '1Rot'.
-##  - A 'Contents' column may be helpful ie the row where 'KCN''s value is '0', 'Contents' may ##       say 'Buffer alone'; this is purely for human aid and will not be used by the program
+
+## - 'sampleName'
+
+## - 'Replicate'
+
+## - Each variable of interest (ie a drug treatment, mutant) must have one column
+
+## - Variables cannot include '-' ie 'kynu-1' should be written as 'kynu1'
+
+## - For concentrations, '0var' should be the buffer only and each concentration that follows \## '1col1', '2col1', etc with 'col1' as the column name ie a 'KCN' column would have '0KCN'
+
+## and '1KCN' while a 'Rot' column would have '0Rot' and '1Rot'.
+
+## - A 'Contents' column may be helpful ie the row where 'KCN''s value is '0', 'Contents' may \## say 'Buffer alone'; this is purely for human aid and will not be used by the program
 
 ```{r}
-compounds <- read.csv("base_compounds.csv", row.names=1)
+compounds <- read.csv("base_compounds.csv")
 View(compounds)
 ```
 
 ## Comments:
-## 'compounds' must include the following columns:
-##  - 'featureName'
-##  - 'featureClass' -> whether a feature is a 'met' or a 'ref' (an internal reference)
-##  - 'KEGG_ID' -> the KEGG ID of each meatbolite, required for pathway information
 
-```{r}  
-objectDataFrame <- read.csv("base_dataset.csv")
+## 'compounds' must include the following columns:
+
+## - 'featureName'
+
+## - 'featureClass' -\> whether a feature is a 'met' or a 'ref' (an internal reference)
+
+## - 'KEGG_ID' -\> the KEGG ID of each meatbolite, required for pathway information
+
+```{r}
+objectDataFrame <- read.csv("base_dataset2.csv",
+                            sep=";")%>%
+  mutate(oldSampleName=sampleName)%>%
+  mutate(sampleName=gsub("20181010_","",sampleName))%>%
+  mutate(sampleName=gsub(".d","",sampleName))
 View(objectDataFrame)
 ```
 
 ## Comments:
-## 'objectDataFrame' should be the result of a chromeXtractor run using samples that match the 'sample_sheet' and 'compounds'. The following columns should be generated automatically but be sure to double check. 
+
+## 'objectDataFrame' should be the result of a chromeXtractor run using samples that match the 'sample_sheet' and 'compounds'. The following columns should be generated automatically but be sure to double check.
 
 ## 'objectDataFrame' must include the following columns:
-##  - 'sampleName': must match the 'sampleName' from the 'sample_sheet'
-##  - 'sampleClass': whether the sample is a 'blank' (ie a run black), a 'filter' (ie a rep blank) or a 'sample'
-##  - 'featureName'
-##  - 'featureClass'
-##  - A value for each peak ie 'integratedIntensity' or 'maxIntensity'
+
+## - 'sampleName': must match the 'sampleName' from the 'sample_sheet'
+
+## - 'sampleClass': whether the sample is a 'blank' (ie a run black), a 'filter' (ie a rep blank) or a 'sample'
+
+## - 'featureName'
+
+## - 'featureClass'
+
+## - A value for each peak ie 'integratedIntensity' or 'maxIntensity'
 
 ```{r}
 source('Scripts/keggExtractor.R') # To generate the list of KEGG pathways
@@ -69,7 +92,8 @@ View(final.cmpd.df)
 ```
 
 ## Comments:
-## Select the KEGG ID for whichever organism the LC-MS was run in, ie 'cel' is C.elegans, 'eco' is E.coli and 'sce' is S.cerevisiae. Full list: https://www.genome.jp/kegg/catalog/org_list.html
+
+## Select the KEGG ID for whichever organism the LC-MS was run in, ie 'cel' is C.elegans, 'eco' is E.coli and 'sce' is S.cerevisiae. Full list: <https://www.genome.jp/kegg/catalog/org_list.html>
 
 ```{r, warning=FALSE}
 source('Scripts/dataCleanup.R')  # For data cleanup functions.
@@ -81,20 +105,30 @@ sampleData <- dataCleanup(objectDataFrame,
                           peak=integratedIntensity,
                           # Select the variables of interest (ie the drugs or mutants)
                           factors=c("Mutant","KCN"),
-                          # 'percentile' govers the cutoff for how what percentage of a peak a                            blank ('percentile') or a filter ('percentile2') can be relative to a                           peak in a sample. 1 is the most permissive and '0' the least.
-                          percentile=0.6,percentile2=0.6,
+                          # 'cut_height' governs the minimum intensity of a peak.
+                          cut_height=1250,
+                          # 'percentile' governs the cutoff for how what percentage of a peak a                            blank ('percentile') or a filter ('percentile2') can be relative to a                           peak in a sample. 1 is the most permissive and '0' the least.
+                          percentile=0.9,percentile2=0.9,
                           # If you have an internal reference, this will normalize each peak to                             that reference
-                          refNorm=TRUE)
+                          refNorm=TRUE,
+                          KEGG=TRUE)
 
 print(filteredMets)
 View(sampleData)
+
+# 'filteredMets' are the metabolites which were removed for failing to meet the quality standard.
 ```
 
 ## Comments:
+
 ## This function keeps features which have peaks beyond the set cutoff (percentile) in regards to the blank or filter for that peak.
+
 ## The peaks can also be normalized to the internal reference peak.
+
 ## This function will save a 'runbanks' and a 'repblanks' histogram to your working directory.
+
 ## These show a histogram of the peaks where x is the ratio between the sample and the blank/filter. Check that you are happy with your select cutoff (the line) before continuing.
+
 ## The peaks which were below the quality threshold as stored in 'filteredMets' and will be printed for you. Be sure to check if you're missing any important favourites and adjust your 'percentile's as needed.
 
 ```{r}
@@ -105,29 +139,39 @@ View(fn_model)
 
 pVal=0.05
 
+# This will normalize your data in each of the ways you list in your normalization scripts so that you can compare normalization methods.
 normData <- list_model%>%
   map_df(fn_model,sampleData%>%
-           nest(),
+           nest(data=everything()),
          .id="normMethod")%>%
   unnest(normData)%>%
   mutate(saveName=paste0(saveName,pVal,"_",normMethod,"_",featureName,"_"))
 
-View(normData)
+#View(normData)
 ```
 
 ## Comments:
+
 ## You must modify the 'base_Normalization_Scripts' yourself for every project. This is where you choose which types of normalization you'd like to run. You need to write at least one but you can write as many as you'd like.
+
 ## Must include:
+
 ## - Within each function:
-##  - A 'factors' column
-##  - A 'form' column
+
+## - A 'factors' column
+
+## - A 'form' column
+
 ## - 'list_model'
+
 ## - 'fn_model'
+
 ## A full guide is within the script.
+
 ## 'normData' will be your normalized data which will used throughout the following steps.
 
 ```{r, warning=FALSE}
-source('Scripts/analysisTools2.R') # To find significant peaks and plot them
+source('Scripts/analysisTools3.R') # To find significant peaks and plot them
 
 sign_mets <- signANOVA(normData,
                        sampleData=sampleData,
@@ -135,10 +179,15 @@ sign_mets <- signANOVA(normData,
                        saveName=saveName,
                        pVal=pVal)
 ```
+
 ## Comments:
-## This will generate both a 'volcanoPlot.png' and 'sign_mets'. 
-## The volcano plot is a spread of the difference for each peak between different factors and terms on the x axis and the p value for each of those differences for each peak on the y. A subplot is made for each type of normalization and for each term ie in a two factor linear model of foldChange~factor1*factor2, the terms will be 'factor1', 'factor2' and 'factor1:factor2'. The points in blue are those which go beyond your 'pVal' cutoff for both the x and the y axis. The number in the right hand corner is the number of peaks which meet that cutoff. This is one way of comparing the different normalization options that you have selected.
+
+## This will generate both a 'volcanoPlot.png' and 'sign_mets'.
+
+## The volcano plot is a spread of the difference for each peak between different factors and terms on the x axis and the p value for each of those differences for each peak on the y. A subplot is made for each type of normalization and for each term ie in a two factor linear model of foldChange\~factor1\*factor2, the terms will be 'factor1', 'factor2' and 'factor1:factor2'. The points in blue are those which go beyond your 'pVal' cutoff for both the x and the y axis. The number in the right hand corner is the number of peaks which meet that cutoff. This is one way of comparing the different normalization options that you have selected.
+
 ## When you're happy with your normalizations, continue.
+
 ## 'sign_mets' is a dataframe of all the metabolites which passed your cutoff for each individual term:normalization interaction. The KEGG pathway(s) which those metabolites belong to are also listed.
 
 ```{r}
@@ -156,17 +205,29 @@ heatmap_table <- makeHeatmapTable(met_data = normData,
                                   # Do you want each rep or a mean of the reps.
                                   data_mean = TRUE,
                                   # Whether the data will be sorted by level or by clustering.
-                                  data_sort = TRUE
+                                  data_sort = TRUE,
+                                  filetype=".pdf",
+                                  same_legend = T,
+                                  sym_breaks = T
                                   )
 ```
-## Comments:
-## This will generate a table of heatmaps for each normalization as well as saving them.
-## If desired, you can select a table (like 'sign_mets') to filter your data. A vector of metabolites or of normalizations can also be used to filter the data used to generate the heatmap.
-## 'y' must be a string.
-```{r}
-source('Scripts/analysisTools2.R') # To find significant peaks and plot them
 
-plots1 <- plotPeaks(normData,
+## Comments:
+
+## This will generate a table of heatmaps for each normalization as well as saving them.
+
+## If desired, you can select a table (like 'sign_mets') to filter your data. A vector of metabolites or of normalizations can also be used to filter the data used to generate the heatmap.
+
+## 'y' must be a string.
+
+```{r}
+source('Scripts/analysisTools3.R') # To find significant peaks and plot them
+
+plots1 <- plotPeaks(normData, 
+                    # List of metabolites of interest. If all desired, use 'NULL'.
+                    met_list=NULL,
+                    # List of pathways of interest. If all desired, use 'NULL'.
+                    pathway_list = NULL,
                     # The y axis variable.
                     yPlot="foldChange", 
                     # The variable which will be used to color the boxplots. Must be one of the
@@ -185,10 +246,15 @@ plots1 <- plotPeaks(normData,
                     # Whether to plot the pvalue brackets on the boxplots.
                     plotP=TRUE,
                     # Whether to plot the mass spec peak for each feature.
-                    plotPeak=FALSE)
+                    plotPeak=FALSE,
+                    samples,
+                    cBlacklist=c(),)
 ```
+
 ## Comments:
+
 ## This will generate a table with boxplots and/or peaks for each feature and normalization method. To see a specific graph just select the appropriate row and print 'savedPlot' or 'savedPeak'. You can also 'pull()' peaks/plots of interest.
+
 ```{r}
 
 View(sign_mets%>%
@@ -197,28 +263,34 @@ View(sign_mets%>%
     arrange(desc(n)))
 
 ```
+
 ## Comments:
+
 ## This is just a quick piece of code to see which pathways are enriched in the sign_mets which is helpful for the next step. There is no correction so be sure to use another program if you're interested in proper pathway enrichment.
+
 ```{r}
+
+source('Scripts/analysisTools3.R') # To save plots.
 
 savePeaks(plots1,
           final.cmpd.df,
-          # A vector of pathways of interest, optional.
-          pathway_list = c("Tryptophan metabolism"),
-          # A vector of metabolites of interest, optional.
-          #met_list = c("L_Tryptophan","L_Malic_Acid"),
-          # A vector of normalizations of interest, optional.
-          #norm_list = c("mutantnorm"),
-          # Whether to save the peak for each feature.
-          savePeak = FALSE,
-          # Whether to save the plot for each feature.
-          savePlot = TRUE,
-          # Specific filepath other than the working directory, must end with a '/', optional.
-          path="",
-          # Filetype (ie. '.svg', '.png', '.jpg'), optionally add any additional text for the 
-          # filename.
-          fileType = "_Trp.png")
+# A vector of pathways of interest, optional.
+          #pathway_list = c("Tryptophan metabolism"),
+# A vector of metabolites of interest, optional. 
+          #met_list = rot_sign_mets%>%
+    #select(-term,-normMethod),
+# A vector of normalizations of interest, optional.
+          norm_list = c("mutantnorm"),
+# Whether to save the peak for each feature.
+          savePeak = F,
+# Whether to save the plot for each feature.
+          savePlot = T,
+# Specific filepath other than the working directory, must end with a '/', optional.
+          #path="plots/",
+# Filetype (ie. '.svg', '.png', '.jpg'), optionally add any additional text for the filename.
+          fileType = ".svg")
 ```
-## Comments:
-## Saves peaks and boxplots.
 
+## Comments:
+
+## Saves peaks and boxplots.

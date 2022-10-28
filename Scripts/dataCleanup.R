@@ -1,4 +1,6 @@
 require("ggthemes")
+require("rlang")
+
 cutoffFun <- function(dataFrame,quo_peak,sClass="blank",saveName,percentile){
   cutoff <- quantile(dataFrame%>%
                        filter(sampleClass==sClass&featureClass!="ref")%>%
@@ -44,35 +46,64 @@ newcutoffFun <- function(dataFrame,quo_peak,sClass="blank",saveName,percentile,
     geom_histogram(bins=100)+
     theme_few()+
     geom_vline(xintercept = percentile)
-  ggsave(paste0(format(Sys.Date(),"%Y%m%d"),"_",toString(quo_peak),"_",saveName,".png"))
+  ggsave(paste0(format(Sys.Date(),"%Y%m%d"),"_",toString(quo_peak),"_",saveName,".png"),
+         width=4,height=4)
   
   return(shortenedData)
 }
 
-dataCleanup <- function(objectDataFrame,sampleTable,compounds,
+horizon <- function(dataFrame,cut_height,group_v){
+  horizonSet <- dataFrame%>%
+    filter(sampleClass=="sample"&featureClass=="met")%>%
+    group_by_at(group_v)%>%
+    summarise(max_i2=max(maxIntensity))%>%
+    filter(max_i2<cut_height)
+  
+  cutSet <- dataFrame%>%
+    anti_join(horizonSet,by=group_v)
+  
+  return(cutSet)
+    
+}
+
+dataCleanup <- function(oDF,sampleTable,compounds,
                         peak=maxIntensity,
-                        percentile=0.6,percentile2=percentile,
+                        percentile=0.9,percentile2=percentile,
+                        cut_height=500,
                         method="new",refNorm=FALSE,
                         factors=c(),
-                        setexp=paste0(factors,collapse="_")){
+                        group_v=c('featureName'),
+                        setexp=paste0(factors,collapse="_"),
+                        KEGG=TRUE){
   quo_peak <- enquo(peak)
   
-  objectDataFrame <- objectDataFrame%>%
-    left_join(compounds%>%
-                select(featureName,featureClass,KEGG_ID)%>%
-                mutate(KEGG_ID=forcats::fct_explicit_na(KEGG_ID)),
-              by=c("featureName","featureClass"))
+  if(KEGG==TRUE){
+    oDF <- oDF%>%
+      left_join(compounds%>%
+                  select(featureName,featureClass,KEGG_ID)%>%
+                  mutate(featureClass=tolower(featureClass),
+                    KEGG_ID=forcats::fct_explicit_na(KEGG_ID)),
+                by=c("featureName","featureClass"))
+  }else{
+    oDF <- oDF%>%
+      left_join(compounds%>%
+                  select(featureName,featureClass),
+                by=c("featureName","featureClass"))
+  }
+  
+  
+  cutData <- horizon(oDF,cut_height,group_v)
   
   if (method=="old"){
     #Remove features which fall outside of a set distribution of the peaks in the blank.
-    shortData <- cutoffFun(objectDataFrame,quo_peak,sClass="blank",
+    shortData <- cutoffFun(cutData,quo_peak,sClass="blank",
                            saveName="quant_runblanks",percentile=percentile)
     
     shorterData <- cutoffFun(shortData,quo_peak,sClass="filter",
                              saveName="quant_repblanks",percentile=percentile2)
     
   }else if (method=="new"){
-    shortData <- newcutoffFun(objectDataFrame,quo_peak,sClass="blank",
+    shortData <- newcutoffFun(cutData,quo_peak,sClass="blank",
                               saveName="ratio_runblanks",percentile=percentile)
 
     shorterData <- newcutoffFun(shortData,quo_peak,sClass="filter",
@@ -82,7 +113,7 @@ dataCleanup <- function(objectDataFrame,sampleTable,compounds,
   }
   
   #Remove features which don't have features in all samples.
-  maxSamples <<- shorterData%>%
+  maxSamples <- shorterData%>%
     group_by(featureName)%>%
     mutate(n=n())%>%
     ungroup()%>%
@@ -94,8 +125,8 @@ dataCleanup <- function(objectDataFrame,sampleTable,compounds,
     mutate(n=n())%>%
     filter(sum(n<maxSamples)==0)%>%
     select(-n)%>%
-    full_join(sampleTable,by="sampleName")%>%
-    filter(!(is.na(Mutant)))%>%
+    inner_join(sampleTable,by=c("sampleName","sampleClass"))%>%
+    filter(sampleClass=="sample")%>%
     ungroup()%>%
     mutate_at(factors,funs('contrasts<-'(as.factor(.),,contr.treatment)))
 
@@ -107,7 +138,7 @@ dataCleanup <- function(objectDataFrame,sampleTable,compounds,
       filter(featureClass!="ref")%>%
       ungroup()%>%
       mutate(norm=ifelse(norm<=0,1,norm))
-    saveName <<- paste0(format(Sys.Date(),"%Y%m%d"),"_",setexp,"_",toString(quo_peak),"_",method,"_norm_")
+    saveName <<- paste0(format(Sys.Date(),"%Y%m%d"),"_",setexp,"_",as_name(quo_peak),"_",method,"_norm_")
   }else{
     sampleData <- sampleData%>%
       filter(featureClass!="ref")%>%
@@ -118,7 +149,7 @@ dataCleanup <- function(objectDataFrame,sampleTable,compounds,
     saveName <<- paste0(format(Sys.Date(),"%Y%m%d"),"_",setexp,"_",toString(quo_peak),"_",method,"_nonorm_")
   }
   
-  filteredMets <<- anti_join(objectDataFrame,sampleData,by="featureName")%>%
+  filteredMets <<- anti_join(oDF,sampleData,by="featureName")%>%
     distinct(featureName)%>%
     pull(featureName)
   

@@ -59,6 +59,8 @@ mutantnorm <- function(data){
     # This us an extra normalization step which normalizes all the peaks in a single sample
     # to conrol for any sample size variation. Other than this step, this normalization method
     # is the same as 'mutants'.
+    filter(Rot=="0Rot")%>%
+    filter(KCN!="1KCN")%>%
     group_by(sampleName)%>% 
     mutate(norm1=norm/median(norm))%>%
     ungroup()%>%
@@ -75,7 +77,7 @@ mutantnorm2 <- function(data){
   data%>%
     # This normalizes to each mutant for each replicate so normalizes for strain density
     # variation.
-    group_by(Replicate,Mutant)%>% 
+    group_by(Replicate,Mutant, Drug)%>% 
     mutate(norm1=norm/median(norm))%>%
     ungroup()%>%
     group_by(featureName)%>% 
@@ -115,14 +117,14 @@ repmean <- function(data){
   
 }
 
-## All the models must be listed here.
+## All the models must be listed here. Hash out models if you don't want them to be used.
 list_model <- 
   list(
-    mutants=mutants,
-    mutantnorm=mutantnorm,
-    mutantnorm2=mutantnorm2,
-    mutantsmean=mutantsmean,
-    repmean=repmean
+    #mutants=mutants,
+    mutantnorm=mutantnorm
+    #mutantnorm2=mutantnorm2,
+    #mutantsmean=mutantsmean,
+    #repmean=repmean
   )
 
 fn_model <- function(.normalizedData,df){

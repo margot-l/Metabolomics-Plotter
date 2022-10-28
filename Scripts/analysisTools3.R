@@ -14,13 +14,12 @@ signANOVA <- function(normData,sampleData,final.cmpd.df,
                       pVal=0.05,q=c(pVal,(1-pVal)),
                       comp=character(),
                       saveName){
-  mets <<- normData%>%
+  mets <- normData%>%
     group_by(normMethod,featureName)%>%
     group_nest()%>%
     mutate(mets=map(data,
-                    ~tidy(TukeyHSD(aov(as.formula(.$form[[1]]),.),
-                                        conf.level=(1-pVal)))))%>%
-    select(-data)
+                    ~tidy(TukeyHSD(aov(suppressWarnings(formula(.$form)),.),
+                                        conf.level=(1-pVal)))))
   
   data1 <- mets%>%
     unnest(mets,.drop=FALSE)%>%
@@ -143,7 +142,7 @@ plotPeaks <- function(plotData,
              unlist(),
            factors4 = gsub("(?<=\\+)[a-zA-Z]*","",
                            gsubfn("[1-9][a-zA-Z0-9]*", ~ paste(rep("+", substr(n,1,1)), collapse = ""),
-                                  gsub("0[a-zA-Z0-9]*","-",factors3)),perl=TRUE),
+                                  gsub("0[a-zA-Z0-9]*","-",KCN)),perl=TRUE),
            factors5 = factors%>% 
              map(~as.character(interaction(as.list(.[.!=fillPlot]), sep='\n', lex.order = TRUE)))%>%
              unlist()
@@ -153,7 +152,7 @@ plotPeaks <- function(plotData,
       ungroup()%>%
       group_by(normMethod,featureName,form,factors1,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,add=TRUE)%>%
+      group_by(sampleList,.add=TRUE)%>%
       group_nest()%>%
       mutate(savedPlot=
                pmap(list(x=data,
@@ -173,7 +172,7 @@ plotPeaks <- function(plotData,
                             aspect.ratio=1.0,
                             axis.text =  element_text(size=21),
                             axis.title=element_text(size=23))+
-                      geom_text(aes(label = factors5, x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
+                      geom_text(aes(label = "KCN", x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
                       coord_cartesian(clip="off")+
                       labs(title=gsub("_","-",gsub("(_?[DL]+_)","",
                                                    gsub("(?<=[0-9])_(?=[0-9])",",",
@@ -190,7 +189,7 @@ plotPeaks <- function(plotData,
         ungroup()%>%
         group_by(normMethod,featureName,factors1,saveName)%>%
         group_nest()%>%
-        mutate(mets=map(data,~tidy(TukeyHSD(aov(as.formula(.$form[[1]]),.)))))%>%
+        mutate(mets=map(data,~tidy(TukeyHSD(aov(suppressWarnings(as.formula(.$form)),.)))))%>%
         unnest(mets,.drop=F)
       
       sumMets <- anovaMets%>%
@@ -209,7 +208,7 @@ plotPeaks <- function(plotData,
                                                               p=savedPlot),
                                                          function(x,y,z,a,b,p)
                                                            (p+
-                                                              geom_signif(data=tidy(TukeyHSD(aov(as.formula(b),
+                                                              geom_signif(data=tidy(TukeyHSD(aov(suppressWarnings(as.formula(b)),
                                                                                                  data=x)))%>%
                                                                             filter(term==a)%>%
                                                                             filter(comparisonFinder(contrast)==TRUE)%>%
@@ -283,13 +282,17 @@ plotPeaks <- function(plotData,
                                                          aesthetics=c("colour","fill"))+
                                    scale_shape(name=fillPlot,
                                                breaks=waiver(),
-                                               labels=fillVector))))
+                                               labels=fillVector)
+                               )
+        )
+        )
+  
     }
   }else if(!plotPeak){
     plots <- plotData%>%
       group_by(featureName,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,add=TRUE)%>%
+      group_by(sampleList,.add=TRUE)%>%
       group_nest()
   }
   if (plotPeak){
@@ -297,9 +300,12 @@ plotPeaks <- function(plotData,
       mutate(savedPeak=map2(featureName,sampleList,
                             possibly(~ggdraw()+
                                        draw_plot(plotEIC(integratedset,
-                                                         sampleName = strsplit(.y,",")[[1]],
+                                                         sampleName = append(samples%>%
+                                                                               filter(sampleClass!="sample")%>%
+                                                                               pull(sampleName),
+                                                                             strsplit(.y,",")[[1]]),
                                                          featureName = .x,
-                                                         featureClass="MET",
+                                                         featureClass="met",
                                                          integralRangeOnly=TRUE)+
                                                    labs(title=gsub("_","-",
                                                                    gsub("(_?[DL]{1,2}_)","",
@@ -310,14 +316,17 @@ plotPeaks <- function(plotData,
                                                                    )
                                                         )+
                                                    scale_color_discrete(name="Sample Class",
-                                                                        breaks=sort(sample_sheet%>%
+                                                                        breaks=sort(samples%>%
                                                                                       distinct(sampleClass)%>%
                                                                                       pull())),
                                                  0,0,1,1)+
                                        draw_plot(plotEIC(integratedset,
-                                                         sampleName = strsplit(.y,",")[[1]],
+                                                         sampleName = append(samples%>%
+                                                                               filter(sampleClass!="sample")%>%
+                                                                               pull(sampleName),
+                                                                             strsplit(.y,",")[[1]]),
                                                          featureName = .x,
-                                                         featureClass="MET",
+                                                         featureClass="met",
                                                          displayIntegrationRange=TRUE,
                                                          integrationRangeAlphaScalar=0.9)+ 
                                                    theme(legend.position = "none",
@@ -328,7 +337,11 @@ plotPeaks <- function(plotData,
       )
       )
   }
-  return(plots)
+  return(plots%>%
+           left_join(sampleData%>%
+                       select(featureName,KEGG_ID)%>%
+                       distinct(),by=c("featureName"))
+         )
 }
 
 savePeaks <- function(plots,final.cmpd.df,
@@ -336,13 +349,13 @@ savePeaks <- function(plots,final.cmpd.df,
                       norm_list=c(),
                       saveName,
                       widthPlot=7, heightPlot=5,
-                      widthPeak=4, heightPeak=3,
+                      widthPeak=7, heightPeak=5,
                       savePeak=TRUE,savePlot=TRUE,
                       path="",
                       fileType=".png"){
   if (is.null(met_list)&is.null(pathway_list)){
     met_list=plots%>%
-      distinct(featureName)
+      distinct(featureName,KEGG_ID)
   }else if (!(is.null(pathway_list))){
     met_list=plots%>%
       inner_join(final.cmpd.df%>%
@@ -350,7 +363,7 @@ savePeaks <- function(plots,final.cmpd.df,
       distinct(featureName)
   }else if(!(is.data.frame(met_list))){
     met_list=as.data.frame(met_list)%>%
-      dplyr::rename(featureName="met_list")
+      rename(featureName="met_list")
   }else{
     met_list=met_list%>%
       filter(KEGG_ID!="Missing")
@@ -358,7 +371,8 @@ savePeaks <- function(plots,final.cmpd.df,
   
   if(!(is.null(norm_list))){
     norm_list=as.data.frame(norm_list)%>%
-      dplyr::rename(normMethod="norm_list")
+      rename(normMethod="norm_list")%>%
+      rename()
   }else{
     norm_list=plots%>%
       distinct(normMethod)
@@ -390,7 +404,7 @@ savePeaks <- function(plots,final.cmpd.df,
          base_aspect_ratio=0.8,
          save_plot)   
   }
-  #dev.off()
+  dev.off()
 }
 
 comparisonFinder <- function(x){

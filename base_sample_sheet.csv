@@ -1,49 +1,115 @@
-sampleName,Mutant,Contents,KCN,Rot,Time..hrs.,Replicate,Portion
-MLMET0068,N2,M9,0KCN,0Rot,6,1,Pellet
-MLMET0070,N2,300µM KCN,2KCN,0Rot,6,1,Pellet
-MLMET0072,kynu1,M9,0KCN,0Rot,6,1,Pellet
-MLMET0074,kynu1,300µM KCN,2KCN,0Rot,6,1,Pellet
-MLMET0077,N2,M9,0KCN,0Rot,6,1,Supernatant
-MLMET0079,N2,300µM KCN,2KCN,0Rot,6,1,Supernatant
-MLMET0081,kynu1,M9,0KCN,0Rot,6,1,Supernatant
-MLMET0083,kynu1,300µM KCN,2KCN,0Rot,6,1,Supernatant
-MLMET0091,N2,M9,0KCN,0Rot,6,2,Pellet
-MLMET0093,N2,300µM KCN,2KCN,0Rot,6,2,Pellet
-MLMET0095,kynu1,M9,0KCN,0Rot,6,2,Pellet
-MLMET0097,kynu1,300µM KCN,2KCN,0Rot,6,2,Pellet
-MLMET0100,N2,M9,0KCN,0Rot,6,2,Supernatant
-MLMET0102,N2,300µM KCN,2KCN,0Rot,6,2,Supernatant
-MLMET0104,kynu1,M9,0KCN,0Rot,6,2,Supernatant
-MLMET0106,kynu1,300µM KCN,2KCN,0Rot,6,2,Supernatant
-MLMET0118,N2,M9,0KCN,0Rot,6,3,Pellet
-MLMET0166,N2,300µM KCN,2KCN,0Rot,6,3,Pellet
-MLMET0121,kynu1,M9,0KCN,0Rot,6,3,Pellet
-MLMET0123,kynu1,300µM KCN,2KCN,0Rot,6,3,Pellet
-MLMET0127,N2,M9,0KCN,0Rot,6,3,Supernatant
-MLMET0129,N2,300µM KCN,2KCN,0Rot,6,3,Supernatant
-MLMET0131,kynu1,M9,0KCN,0Rot,6,3,Supernatant
-MLMET0133,kynu1,300µM KCN,2KCN,0Rot,6,3,Supernatant
-MLMET0136,N2,M9,0KCN,0Rot,6,4,Pellet
-MLMET0138,N2,300µM KCN,2KCN,0Rot,6,4,Pellet
-MLMET0140,kynu1,M9,0KCN,0Rot,6,4,Pellet
-MLMET0142,kynu1,300µM KCN,2KCN,0Rot,6,4,Pellet
-MLMET0146,N2,M9,0KCN,0Rot,6,4,Supernatant
-MLMET0148,N2,300µM KCN,2KCN,0Rot,6,4,Supernatant
-MLMET0150,kynu1,M9,0KCN,0Rot,6,4,Supernatant
-MLMET0152,kynu1,300µM KCN,2KCN,0Rot,6,4,Supernatant
-MLMET0160,N2,M9,0KCN,0Rot,6,5,Pellet
-MLMET0162,N2,300µM KCN,2KCN,0Rot,6,5,Pellet
-MLMET0164,kynu1,M9,0KCN,0Rot,6,5,Pellet
-MLMET0167,kynu1,300µM KCN,2KCN,0Rot,6,5,Pellet
-MLMET0170,N2,M9,0KCN,0Rot,6,5,Supernatant
-MLMET0172,N2,300µM KCN,2KCN,0Rot,6,5,Supernatant
-MLMET0174,kynu1,M9,0KCN,0Rot,6,5,Supernatant
-MLMET0176,kynu1,300µM KCN,2KCN,0Rot,6,5,Supernatant
-MLMET0180,N2,M9,0KCN,0Rot,6,6,Pellet
-MLMET0182,N2,300µM KCN,2KCN,0Rot,6,6,Pellet
-MLMET0184,kynu1,M9,0KCN,0Rot,6,6,Pellet
-MLMET0186,kynu1,300µM KCN,2KCN,0Rot,6,6,Pellet
-MLMET0189,N2,M9,0KCN,0Rot,6,6,Supernatant
-MLMET0191,N2,300µM KCN,2KCN,0Rot,6,6,Supernatant
-MLMET0193,kynu1,M9,0KCN,0Rot,6,6,Supernatant
-MLMET0195,kynu1,300µM KCN,2KCN,0Rot,6,6,Supernatant
+sampleName,Mutant,Contents,sampleClass,KCN,Rot,Time (hrs),Replicate,Portion
+MLMET0066,NA,Filter (dry),filter,NA,NA,NA,1,Pellet
+MLMET0067,NA,Filter (M9),filter,NA,NA,NA,1,Pellet
+MLMET0068,N2,M9,sample,0KCN,0Rot,6,1,Pellet
+MLMET0069,N2,100µM KCN,sample,1KCN,0Rot,6,1,Pellet
+MLMET0070,N2,300µM KCN,sample,2KCN,0Rot,6,1,Pellet
+MLMET0071,N2,12.5µM Rot,sample,0KCN,1Rot,6,1,Pellet
+MLMET0072,kynu1,M9,sample,0KCN,0Rot,6,1,Pellet
+MLMET0073,kynu1,100µM KCN,sample,1KCN,0Rot,6,1,Pellet
+MLMET0074,kynu1,300µM KCN,sample,2KCN,0Rot,6,1,Pellet
+MLMET0075,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,1,Pellet
+MLMET0076,NA,M9 Blank,blank,NA,NA,NA,1,Supernatant
+MLMET0077,N2,M9,sample,0KCN,0Rot,6,1,Supernatant
+MLMET0078,N2,100µM KCN,sample,1KCN,0Rot,6,1,Supernatant
+MLMET0079,N2,300µM KCN,sample,2KCN,0Rot,6,1,Supernatant
+MLMET0080,N2,12.5µM Rot,sample,0KCN,1Rot,6,1,Supernatant
+MLMET0081,kynu1,M9,sample,0KCN,0Rot,6,1,Supernatant
+MLMET0082,kynu1,100µM KCN,sample,1KCN,0Rot,6,1,Supernatant
+MLMET0083,kynu1,300µM KCN,sample,2KCN,0Rot,6,1,Supernatant
+MLMET0084,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,1,Supernatant
+MLMET0089,NA,Filter (dry),filter,NA,NA,NA,2,Pellet
+MLMET0090,NA,Filter (M9),filter,NA,NA,NA,2,Pellet
+MLMET0091,N2,M9,sample,0KCN,0Rot,6,2,Pellet
+MLMET0092,N2,100µM KCN,sample,1KCN,0Rot,6,2,Pellet
+MLMET0093,N2,300µM KCN,sample,2KCN,0Rot,6,2,Pellet
+MLMET0094,N2,12.5µM Rot,sample,0KCN,1Rot,6,2,Pellet
+MLMET0095,kynu1,M9,sample,0KCN,0Rot,6,2,Pellet
+MLMET0096,kynu1,100µM KCN,sample,1KCN,0Rot,6,2,Pellet
+MLMET0097,kynu1,300µM KCN,sample,2KCN,0Rot,6,2,Pellet
+MLMET0098,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,2,Pellet
+MLMET0099,NA,M9 Blank,blank,NA,NA,NA,2,Supernatant
+MLMET0100,N2,M9,sample,0KCN,0Rot,6,2,Supernatant
+MLMET0101,N2,100µM KCN,sample,1KCN,0Rot,6,2,Supernatant
+MLMET0102,N2,300µM KCN,sample,2KCN,0Rot,6,2,Supernatant
+MLMET0103,N2,12.5µM Rot,sample,0KCN,1Rot,6,2,Supernatant
+MLMET0104,kynu1,M9,sample,0KCN,0Rot,6,2,Supernatant
+MLMET0105,kynu1,100µM KCN,sample,1KCN,0Rot,6,2,Supernatant
+MLMET0106,kynu1,300µM KCN,sample,2KCN,0Rot,6,2,Supernatant
+MLMET0107,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,2,Supernatant
+MLMET0116,NA,Filter (dry),filter,NA,NA,NA,3,Pellet
+MLMET0117,NA,Filter (M9),filter,NA,NA,NA,3,Pellet
+MLMET0118,N2,M9,sample,0KCN,0Rot,6,3,Pellet
+MLMET0119,N2,100µM KCN,sample,1KCN,0Rot,6,3,Pellet
+MLMET0166,N2,300µM KCN,sample,2KCN,0Rot,6,3,Pellet
+MLMET0120,N2,12.5µM Rot,sample,0KCN,1Rot,6,3,Pellet
+MLMET0121,kynu1,M9,sample,0KCN,0Rot,6,3,Pellet
+MLMET0122,kynu1,100µM KCN,sample,1KCN,0Rot,6,3,Pellet
+MLMET0123,kynu1,300µM KCN,sample,2KCN,0Rot,6,3,Pellet
+MLMET0124,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,3,Pellet
+MLMET0126,NA,M9 Blank,blank,NA,NA,NA,3,Supernatant
+MLMET0127,N2,M9,sample,0KCN,0Rot,6,3,Supernatant
+MLMET0128,N2,100µM KCN,sample,1KCN,0Rot,6,3,Supernatant
+MLMET0129,N2,300µM KCN,sample,2KCN,0Rot,6,3,Supernatant
+MLMET0130,N2,12.5µM Rot,sample,0KCN,1Rot,6,3,Supernatant
+MLMET0131,kynu1,M9,sample,0KCN,0Rot,6,3,Supernatant
+MLMET0132,kynu1,100µM KCN,sample,1KCN,0Rot,6,3,Supernatant
+MLMET0133,kynu1,300µM KCN,sample,2KCN,0Rot,6,3,Supernatant
+MLMET0134,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,3,Supernatant
+MLMET0125,NA,Filter (dry),filter,NA,NA,NA,4,Pellet
+MLMET0135,NA,Filter (M9),filter,NA,NA,NA,4,Pellet
+MLMET0136,N2,M9,sample,0KCN,0Rot,6,4,Pellet
+MLMET0137,N2,100µM KCN,sample,1KCN,0Rot,6,4,Pellet
+MLMET0138,N2,300µM KCN,sample,2KCN,0Rot,6,4,Pellet
+MLMET0139,N2,12.5µM Rot,sample,0KCN,1Rot,6,4,Pellet
+MLMET0140,kynu1,M9,sample,0KCN,0Rot,6,4,Pellet
+MLMET0141,kynu1,100µM KCN,sample,1KCN,0Rot,6,4,Pellet
+MLMET0142,kynu1,300µM KCN,sample,2KCN,0Rot,6,4,Pellet
+MLMET0143,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,4,Pellet
+MLMET0145,NA,M9 Blank,blank,NA,NA,NA,4,Supernatant
+MLMET0146,N2,M9,sample,0KCN,0Rot,6,4,Supernatant
+MLMET0147,N2,100µM KCN,sample,1KCN,0Rot,6,4,Supernatant
+MLMET0148,N2,300µM KCN,sample,2KCN,0Rot,6,4,Supernatant
+MLMET0149,N2,12.5µM Rot,sample,0KCN,1Rot,6,4,Supernatant
+MLMET0150,kynu1,M9,sample,0KCN,0Rot,6,4,Supernatant
+MLMET0151,kynu1,100µM KCN,sample,1KCN,0Rot,6,4,Supernatant
+MLMET0152,kynu1,300µM KCN,sample,2KCN,0Rot,6,4,Supernatant
+MLMET0153,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,4,Supernatant
+MLMET0144,NA,Filter (dry),filter,NA,NA,NA,5,Pellet
+MLMET0159,NA,Filter (M9),filter,NA,NA,NA,5,Pellet
+MLMET0160,N2,M9,sample,0KCN,0Rot,6,5,Pellet
+MLMET0161,N2,100µM KCN,sample,1KCN,0Rot,6,5,Pellet
+MLMET0162,N2,300µM KCN,sample,2KCN,0Rot,6,5,Pellet
+MLMET0163,N2,12.5µM Rot,sample,0KCN,1Rot,6,5,Pellet
+MLMET0164,kynu1,M9,sample,0KCN,0Rot,6,5,Pellet
+MLMET0165,kynu1,100µM KCN,sample,1KCN,0Rot,6,5,Pellet
+MLMET0167,kynu1,300µM KCN,sample,2KCN,0Rot,6,5,Pellet
+MLMET0168,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,5,Pellet
+MLMET0169,NA,M9 Blank,blank,NA,NA,NA,5,Supernatant
+MLMET0170,N2,M9,sample,0KCN,0Rot,6,5,Supernatant
+MLMET0171,N2,100µM KCN,sample,1KCN,0Rot,6,5,Supernatant
+MLMET0172,N2,300µM KCN,sample,2KCN,0Rot,6,5,Supernatant
+MLMET0173,N2,12.5µM Rot,sample,0KCN,1Rot,6,5,Supernatant
+MLMET0174,kynu1,M9,sample,0KCN,0Rot,6,5,Supernatant
+MLMET0175,kynu1,100µM KCN,sample,1KCN,0Rot,6,5,Supernatant
+MLMET0176,kynu1,300µM KCN,sample,2KCN,0Rot,6,5,Supernatant
+MLMET0177,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,5,Supernatant
+MLMET0178,NA,Filter (dry),filter,NA,NA,NA,6,Pellet
+MLMET0179,NA,Filter (M9),filter,NA,NA,NA,6,Pellet
+MLMET0180,N2,M9,sample,0KCN,0Rot,6,6,Pellet
+MLMET0181,N2,100µM KCN,sample,1KCN,0Rot,6,6,Pellet
+MLMET0182,N2,300µM KCN,sample,2KCN,0Rot,6,6,Pellet
+MLMET0183,N2,12.5µM Rot,sample,0KCN,1Rot,6,6,Pellet
+MLMET0184,kynu1,M9,sample,0KCN,0Rot,6,6,Pellet
+MLMET0185,kynu1,100µM KCN,sample,1KCN,0Rot,6,6,Pellet
+MLMET0186,kynu1,300µM KCN,sample,2KCN,0Rot,6,6,Pellet
+MLMET0187,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,6,Pellet
+MLMET0188,NA,M9 Blank,blank,NA,NA,NA,6,Supernatant
+MLMET0189,N2,M9,sample,0KCN,0Rot,6,6,Supernatant
+MLMET0190,N2,100µM KCN,sample,1KCN,0Rot,6,6,Supernatant
+MLMET0191,N2,300µM KCN,sample,2KCN,0Rot,6,6,Supernatant
+MLMET0192,N2,12.5µM Rot,sample,0KCN,1Rot,6,6,Supernatant
+MLMET0193,kynu1,M9,sample,0KCN,0Rot,6,6,Supernatant
+MLMET0194,kynu1,100µM KCN,sample,1KCN,0Rot,6,6,Supernatant
+MLMET0195,kynu1,300µM KCN,sample,2KCN,0Rot,6,6,Supernatant
+MLMET0196,kynu1,12.5µM Rot,sample,0KCN,1Rot,6,6,Supernatant

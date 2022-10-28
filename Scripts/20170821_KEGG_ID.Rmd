@@ -1,0 +1,146 @@
+---
+title: "20170821_KEGG_ID_for_metabolites"
+author: "Soumaya Zlitni"
+date: "August 21, 2017"
+---
+
+### Summary
+The goal of this function is to extract information about the metabolite KEGG ID from the KEGG database. This can greatly help in integrating the information from metabolomics experiments with other publicly-available data.
+
+
+```{r}
+# Required libraries
+library(KEGGREST)     # client interface to the KEGGREST server
+library(tibble)       # for syntax used in writing the function
+library(magrittr)     # for syntax used in writing the function
+```
+### Example
+
+```{r}
+# To get TCA pathway in E coli
+tca.coli <- keggGet("eco: M00009")
+```
+### Comments
+- `eco` is the KEGG database organism code. These can be found on http://www.genome.jp/kegg/catalog/org_list.html
+- For Saccharomyces cerevisiae `sce`; for Caenorhabditis elegans `cel`; for Homo sapiens `hsa`.
+- `"M00009"` is the KEGG module for the TCA cycle.
+- In the KEGG database, pathways, reactions, compounds are given unique identifiers.
+- KEGG pathway codes can be found on http://www.genome.jp/kegg/pathway.html
+- **Note**: the function here uses pathway **modules** found on http://www.genome.jp/kegg-bin/get_htext
+- A pathway module is defined as "a collection of manually defined functional units, called KEGG modules and identified by the M numbers, used for annotation and biological interpretation of sequenced genomes."
+
+**Note**: the output of `keggGet` here is a list that contains 9 lists with all the information about the pathway.
+
+
+```{r}
+# To access this information (examples)
+tca.coli[[1]]$NAME        # This prints the name of the pathway
+tca.coli[[1]]$COMPOUND    # This prints the metabolites of the pathway
+```
+- To get the KEGG ID information for the pathway compounds in a dataframe.
+
+```{r}
+cmpd.df <- sapply(keggGet("eco: M00009"), "[[", "COMPOUND") %>%
+  as.data.frame() %>%
+  rownames_to_column()
+```
+**Notes**:
+- Refer to `tidyr`, `dplyr` and `magrittr` tutorials online for details on the syntax used in the code. The concepts and functions available from these packages are very useful for data wrangling.
+
+example: https://rpubs.com/bradleyboehmke/data_wrangling
+- `sapply(x, "[[",y)` is for subsetting within lists using the `apply` functions.
+- When the COMPOUND data are extracted from the list, the KEGG ID are row names. To keep them in the output, `tibble::rownames_to_column()` is used to convert them into a column in the final output 
+
+### Function to get the KEGG ID information for the pathway compounds in a dataframe
+
+```{r}
+# x = KEGG pathway module
+pathway.cmpds <- function(x) {
+  if (!is.null(keggGet(x)[[1]]$COMPOUND)){
+    df <- sapply(keggGet(x), "[[", "COMPOUND") %>%
+    as.data.frame(.) %>%
+    rownames_to_column(.) %>%
+    cbind(., sapply(keggGet(x), "[[", "NAME"))
+    colnames(df) <- c("KEGG_ID", "Compound", "Pathway")
+    return(df)
+  }
+  
+  
+}
+
+```
+### Comments
+- The function puts together the KEGG ID, compound name and pathway in one 3-column dataframe.
+
+``` {r}
+# To use the function for TCA cycle
+pathway.cmpds("M00009")
+```
+### Output ###
+```{r}
+> pathway.cmpds("M00009")
+   KEGG_ID                                                                        Compound                                Pathway
+1   C00024                                                                      Acetyl-CoA Citrate cycle (TCA cycle, Krebs cycle)
+2   C00036                                                                    Oxaloacetate Citrate cycle (TCA cycle, Krebs cycle)
+3   C00158                                                                         Citrate Citrate cycle (TCA cycle, Krebs cycle)
+4   C00311                                                                      Isocitrate Citrate cycle (TCA cycle, Krebs cycle)
+5   C00026                                                                  2-Oxoglutarate Citrate cycle (TCA cycle, Krebs cycle)
+6   C15972                                                        Enzyme N6-(lipoyl)lysine Citrate cycle (TCA cycle, Krebs cycle)
+7   C16254 [Dihydrolipoyllysine-residue succinyltransferase] S-succinyldihydrolipoyllysine Citrate cycle (TCA cycle, Krebs cycle)
+8   C00091                                                                    Succinyl-CoA Citrate cycle (TCA cycle, Krebs cycle)
+9   C15973                                                 Enzyme N6-(dihydrolipoyl)lysine Citrate cycle (TCA cycle, Krebs cycle)
+10  C00042                                                                       Succinate Citrate cycle (TCA cycle, Krebs cycle)
+11  C00122                                                                        Fumarate Citrate cycle (TCA cycle, Krebs cycle)
+12  C00149                                                                      (S)-Malate Citrate cycle (TCA cycle, Krebs cycle
+```
+
+### To use the function for multiple pathways
+- Define the pathway modules you need (`myPathways`) and apply the function on them.
+
+```{r}
+# The modules here are for TCA and glycolysis
+myPathways <- c("M00009", "M00001")
+
+# Make a list of dataframes of compounds, one for each module provided in myPathways
+cmpd.list <- lapply(myPathways, pathway.cmpds)
+```
+### Output
+```{r}
+> cmpd.list[[1]]
+   KEGG_ID                                                                        Compound                                Pathway
+1   C00024                                                                      Acetyl-CoA Citrate cycle (TCA cycle, Krebs cycle)
+2   C00036                                                                    Oxaloacetate Citrate cycle (TCA cycle, Krebs cycle)
+3   C00158                                                                         Citrate Citrate cycle (TCA cycle, Krebs cycle)
+4   C00311                                                                      Isocitrate Citrate cycle (TCA cycle, Krebs cycle)
+5   C00026                                                                  2-Oxoglutarate Citrate cycle (TCA cycle, Krebs cycle)
+6   C15972                                                        Enzyme N6-(lipoyl)lysine Citrate cycle (TCA cycle, Krebs cycle)
+7   C16254 [Dihydrolipoyllysine-residue succinyltransferase] S-succinyldihydrolipoyllysine Citrate cycle (TCA cycle, Krebs cycle)
+8   C00091                                                                    Succinyl-CoA Citrate cycle (TCA cycle, Krebs cycle)
+9   C15973                                                 Enzyme N6-(dihydrolipoyl)lysine Citrate cycle (TCA cycle, Krebs cycle)
+10  C00042                                                                       Succinate Citrate cycle (TCA cycle, Krebs cycle)
+11  C00122                                                                        Fumarate Citrate cycle (TCA cycle, Krebs cycle)
+12  C00149                                                                      (S)-Malate Citrate cycle (TCA cycle, Krebs cycle)
+
+> cmpd.list[[2]]
+   KEGG_ID                         Compound                                                   Pathway
+1   C00267                  alpha-D-Glucose Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+2   C00668      alpha-D-Glucose 6-phosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+3   C05345      beta-D-Fructose 6-phosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+4   C05378 beta-D-Fructose 1,6-bisphosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+5   C00111              Glycerone phosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+6   C00118     D-Glyceraldehyde 3-phosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+7   C00236  3-Phospho-D-glyceroyl phosphate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+8   C00197            3-Phospho-D-glycerate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+9   C00631            2-Phospho-D-glycerate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+10  C00074              Phosphoenolpyruvate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+11  C00022                         Pyruvate Glycolysis (Embden-Meyerhof pathway), glucose => pyruvate
+```
+
+- To put all the list items in one big dataframe
+```{r}
+final.cmpd.df <- as.tibble(do.call(rbind, cmpd.list))%>%
+    separate(Pathway,into=c("Pathway","Organism"),sep=" - ",extra="merge")
+
+# save the final dataframe
+write.csv(final.cmpd.df, file = paste0("final.cmpd.df", ".csv", sep = ""), row.names = FALSE)
+```
