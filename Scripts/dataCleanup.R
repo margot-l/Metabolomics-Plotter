@@ -24,7 +24,9 @@ cutoffFun <- function(dataFrame,quo_peak,sClass="blank",saveName,percentile){
   return(shortenedData)
 }
 
-newcutoffFun <- function(dataFrame,quo_peak,sClass="blank",saveName,percentile,
+newcutoffFun <- function(dataFrame,quo_peak,
+                         sClass="blank",saveName,
+                         percentile,
                          q1=1,q2=1){
   shortenedData <- dataFrame%>%
     group_by(featureName)%>%
@@ -69,7 +71,7 @@ horizon <- function(dataFrame,cut_height,group_v){
 dataCleanup <- function(oDF,sampleTable,compounds,
                         peak=maxIntensity,
                         percentile=0.9,percentile2=percentile,
-                        cut_height=500,
+                        cut_height=NULL,
                         method="new",refNorm=FALSE,
                         factors=c(),
                         group_v=c('featureName'),
@@ -92,7 +94,12 @@ dataCleanup <- function(oDF,sampleTable,compounds,
   }
   
   
-  cutData <- horizon(oDF,cut_height,group_v)
+  if(!(is.null(cut_height))){
+    cutData <- horizon(oDF,cut_height,group_v)
+  }
+  else{
+    cutData <- oDF
+  }
   
   if (method=="old"){
     #Remove features which fall outside of a set distribution of the peaks in the blank.
@@ -103,7 +110,7 @@ dataCleanup <- function(oDF,sampleTable,compounds,
                              saveName="quant_repblanks",percentile=percentile2)
     
   }else if (method=="new"){
-    shortData <- newcutoffFun(cutData,quo_peak,sClass="blank",
+    shortData <<- newcutoffFun(cutData,quo_peak,sClass="blank",
                               saveName="ratio_runblanks",percentile=percentile)
 
     shorterData <- newcutoffFun(shortData,quo_peak,sClass="filter",
@@ -114,6 +121,8 @@ dataCleanup <- function(oDF,sampleTable,compounds,
   
   #Remove features which don't have features in all samples.
   maxSamples <- shorterData%>%
+    ungroup()%>%
+    filter(sampleClass=="sample")%>%
     group_by(featureName)%>%
     mutate(n=n())%>%
     ungroup()%>%
@@ -121,12 +130,13 @@ dataCleanup <- function(oDF,sampleTable,compounds,
     pull()
 
   sampleData <- shorterData%>%
+    ungroup()%>%
+    filter(sampleClass=="sample")%>%
     group_by(featureName)%>%
     mutate(n=n())%>%
     filter(sum(n<maxSamples)==0)%>%
     select(-n)%>%
     inner_join(sampleTable,by=c("sampleName","sampleClass"))%>%
-    filter(sampleClass=="sample")%>%
     ungroup()%>%
     mutate_at(factors,funs('contrasts<-'(as.factor(.),,contr.treatment)))
 

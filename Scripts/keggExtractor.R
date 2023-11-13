@@ -26,6 +26,7 @@ keggExtractor <- function(organism,
   cmpd.list <- lapply(pathwayList, pathway.cmpds)
   
   # Make the full data frame.
+  final.cmpd.df <- as.tibble(do.call(rbind, cmpd.list))%>%
     separate(Pathway,into=c("Pathway","Organism"),sep=" - ",extra="merge")
   
   # Save the final dataframe

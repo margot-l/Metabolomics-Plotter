@@ -18,7 +18,7 @@ signANOVA <- function(normData,sampleData,final.cmpd.df,
     group_by(normMethod,featureName)%>%
     group_nest()%>%
     mutate(mets=map(data,
-                    ~tidy(TukeyHSD(aov(suppressWarnings(formula(.$form)),.),
+                    ~tidy(TukeyHSD(aov(as.formula(.$form),.),
                                         conf.level=(1-pVal)))))
   
   data1 <- mets%>%
@@ -152,7 +152,7 @@ plotPeaks <- function(plotData,
       ungroup()%>%
       group_by(normMethod,featureName,form,factors1,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,.add=TRUE)%>%
+      group_by(sampleList,add=TRUE)%>%
       group_nest()%>%
       mutate(savedPlot=
                pmap(list(x=data,
@@ -189,7 +189,7 @@ plotPeaks <- function(plotData,
         ungroup()%>%
         group_by(normMethod,featureName,factors1,saveName)%>%
         group_nest()%>%
-        mutate(mets=map(data,~tidy(TukeyHSD(aov(suppressWarnings(as.formula(.$form)),.)))))%>%
+        mutate(mets=map(data,~tidy(TukeyHSD(aov(as.formula(.$form),.)))))%>%
         unnest(mets,.drop=F)
       
       sumMets <- anovaMets%>%
@@ -208,11 +208,11 @@ plotPeaks <- function(plotData,
                                                               p=savedPlot),
                                                          function(x,y,z,a,b,p)
                                                            (p+
-                                                              geom_signif(data=tidy(TukeyHSD(aov(suppressWarnings(as.formula(b)),
+                                                              geom_signif(data=tidy(TukeyHSD(aov(as.formula(b),
                                                                                                  data=x)))%>%
                                                                             filter(term==a)%>%
                                                                             filter(comparisonFinder(contrast)==TRUE)%>%
-                                                                            separate(contrast,into=c("group1","group2"),sep="-")%>%
+                                                                            separate(comparison,into=c("group1","group2"),sep="-")%>%
                                                                             mutate(p.signif=ifelse(adj.p.value<=0.0001, '****',
                                                                                                    ifelse(adj.p.value<=0.001, "***", 
                                                                                                           ifelse(adj.p.value<=0.01,"**",
@@ -292,7 +292,7 @@ plotPeaks <- function(plotData,
     plots <- plotData%>%
       group_by(featureName,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,.add=TRUE)%>%
+      group_by(sampleList,add=TRUE)%>%
       group_nest()
   }
   if (plotPeak){
@@ -337,10 +337,10 @@ plotPeaks <- function(plotData,
       )
       )
   }
-  return(plots%>%
-           left_join(sampleData%>%
-                       select(featureName,KEGG_ID)%>%
-                       distinct(),by=c("featureName"))
+  return(plots#%>%
+           #left_join(sampleData%>%
+           #            select(featureName,KEGG_ID)%>%
+            #           distinct(),by=c("featureName"))
          )
 }
 

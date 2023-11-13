@@ -9,21 +9,25 @@ require("purrr")
 require("gsubfn")
 require("ggthemes")
 require("chromXtractorPRO")
+require("fuzzyjoin")
 
-signANOVA <- function(normData,sampleData,final.cmpd.df,
+signANOVA <- function(normData,sampleData,
+                      met_model,
                       pVal=0.05,q=c(pVal,(1-pVal)),
                       comp=character(),
-                      saveName){
+                      target=NULL,
+                      saveName,
+                      show_all=FALSE){
   mets <<- normData%>%
-    group_by(normMethod,featureName)%>%
-    group_nest()%>%
-    mutate(mets=map(data,
-                    ~tidy(TukeyHSD(aov(as.formula(.$form[[1]]),.),
-                                        conf.level=(1-pVal)))))%>%
+    group_by(normMethod,form,featureName)%>%
+    nest()%>%
+    mutate(mets=map2(data,form,
+                     ~tidy(TukeyHSD(aov(as.formula(.y),.x),
+                                    conf.level=(1-pVal)))))%>%
     select(-data)
   
   data1 <- mets%>%
-    unnest(mets,.drop=FALSE)%>%
+    unnest(mets)%>%
     group_by(term)%>%
     mutate(estimate_sign=ifelse(xor(estimate<quantile(estimate,q[1]),
                                     estimate>quantile(estimate,q[2]))
@@ -59,8 +63,9 @@ signANOVA <- function(normData,sampleData,final.cmpd.df,
                        distinct(normMethod))[1],
             base_height = 2,base_aspect_ratio=1)
   
-  sign_mets <- mets%>%
-    unnest(mets,.drop=FALSE)%>%
+  sign_mets_clean <- mets%>%
+    unnest(mets)%>%
+    mutate(contrast=str_replace_all(contrast, "[\t\n]" , ""))%>%
     filter(comparisonFinder(contrast)==TRUE)%>%
     left_join(sampleData%>%
                 select(featureName,
@@ -82,8 +87,20 @@ signANOVA <- function(normData,sampleData,final.cmpd.df,
     group_by(term)%>%
     filter(estimate<quantile(estimate,q[1])|
              estimate>quantile(estimate,q[2]))%>%
-    filter(adj.p.value<=pVal)%>%
-    left_join(final.cmpd.df,by="KEGG_ID")
+    {if (show_all==FALSE)filter(adj.p.value<=pVal) else .}%>%
+    mutate(KEGG_ID=as.character(KEGG_ID))
+  
+  if(!is_null(target)){
+    sign_mets_clean <- sign_mets_clean%>%
+      filter(contrast==target)
+  }
+  
+  sign_mets <- fuzzy_join(
+    met_model,sign_mets_clean,
+    by = c("MRF"="KEGG_ID"),
+    match_fun = str_detect,
+    mode = "right"
+  )
   
   return(sign_mets)
 }
@@ -106,10 +123,11 @@ writeTable <- function(writeData,met_list,
 
 plotPeaks <- function(plotData,
                       integratedset,
-                      final.cmpd.df,
+                      met_model,
                       met_list=c(),
                       pathway_list=c(),
                       yPlot="foldChange", 
+                      xPlot="KCN",
                       fillPlot="Drug", 
                       fillVector=c("DMSO","12.5uM"),
                       sampleData,
@@ -118,11 +136,17 @@ plotPeaks <- function(plotData,
                       plotP=FALSE,
                       plotPeak=TRUE,
                       plotPlot=TRUE,
+                      showTime=TRUE,
+                      showNorm=TRUE,
                       ...){
   if (!(is.null(pathway_list))){
-    met_list=plotData%>%
-      inner_join(final.cmpd.df%>%
-                   filter(Pathway%in%pathway_list),by="KEGG_ID")%>%
+    met_list=fuzzy_join(
+      met_model%>%
+        filter(Pathway%in%pathway_list),plotData,
+      by = c("MRF"="KEGG_ID"),
+      match_fun = str_detect,
+      mode = "right"
+    )%>%
       pull(featureName)
   }
   if (!(is.null(met_list))){
@@ -143,28 +167,30 @@ plotPeaks <- function(plotData,
              unlist(),
            factors4 = gsub("(?<=\\+)[a-zA-Z]*","",
                            gsubfn("[1-9][a-zA-Z0-9]*", ~ paste(rep("+", substr(n,1,1)), collapse = ""),
-                                  gsub("0[a-zA-Z0-9]*","-",factors3)),perl=TRUE),
+                                  gsub("0[a-zA-Z0-9]*","-",KCN)),perl=TRUE),
            factors5 = factors%>% 
              map(~as.character(interaction(as.list(.[.!=fillPlot]), sep='\n', lex.order = TRUE)))%>%
              unlist()
-           )
+    )
+  
   if (plotPlot){
-    plots <- plotData%>%
+    plots <<- plotData%>%
       ungroup()%>%
-      group_by(normMethod,featureName,form,factors1,saveName)%>%
+      group_by(normMethod,featureName,form,Time,factors1,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,add=TRUE)%>%
-      group_nest()%>%
+      group_by(sampleList,.add=TRUE)%>%
+      nest()%>%
       mutate(savedPlot=
                pmap(list(x=data,
-                         y=featureName,z=normMethod,
-                         a=factors1,b=form),
-                    function(x,y,z,a,b)
+                         y=featureName,
+                         z=normMethod,
+                         t=Time),
+                    function(x,y,z,t)
                       ggplot(data=x,
-                             aes_string(y=yPlot,x="factors2"))+
-                      geom_boxplot(aes_string(fill=fillPlot,colour=fillPlot),
+                             aes(y=!!sym(yPlot),x=factors2))+
+                      geom_boxplot(aes(fill=!!sym(fillPlot),colour=!!sym(fillPlot)),
                                    outlier.shape = NA,alpha=0.5)+
-                      geom_jitter(aes_string(shape=fillPlot),width=0.2)+
+                      geom_jitter(aes(shape=!!sym(fillPlot)),width=0.2)+
                       theme_few(base_size=17)+
                       theme(plot.title = element_text(size = 30,
                                                       hjust=0.5),
@@ -173,31 +199,35 @@ plotPeaks <- function(plotData,
                             aspect.ratio=1.0,
                             axis.text =  element_text(size=21),
                             axis.title=element_text(size=23))+
-                      geom_text(aes(label = factors5, x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
-                      coord_cartesian(clip="off")+
+                      #geom_text(aes(label = "KCN", x = -Inf, y = -Inf),size=8,vjust=1.25,hjust=1.1)+
+                      #coord_cartesian(clip="off")+
                       labs(title=gsub("_","-",gsub("(_?[DL]+_)","",
                                                    gsub("(?<=[0-9])_(?=[0-9])",",",
                                                         gsub("(ic.?(a|A)cid)", "ate",y),
                                                         perl=TRUE))),
                            y=paste0("log2(",yPlot,")"),
-                           x="",
-                           caption=z
+                           x=x$factors5,
+                           if (showNorm) caption=z else NA,
+                           if (showTime) tag=paste0(t,"hrs") else NA
                       )
                )
       )
     if (plotPlot&plotP){
       anovaMets <- plotData%>%
-        ungroup()%>%
-        group_by(normMethod,featureName,factors1,saveName)%>%
-        group_nest()%>%
-        mutate(mets=map(data,~tidy(TukeyHSD(aov(as.formula(.$form[[1]]),.)))))%>%
-        unnest(mets,.drop=F)
+        group_by(featureName,normMethod,form,factors1)%>%
+        nest()%>%
+        mutate(mets=map2(data,form,
+                         ~tidy(TukeyHSD(aov(as.formula(.y),.x),
+                                        conf.level=(1-pVal)))))%>%
+        select(-data)%>%
+        unnest(mets)
       
-      sumMets <- anovaMets%>%
-        filter(adj.p.value<=0.1&term==factors1)%>%
+      sumMets <<- anovaMets%>%
+        filter(adj.p.value<=pVal&term==factors1)%>%
         filter(comparisonFinder(contrast)==TRUE)%>%
         group_by(normMethod,featureName)%>%
-        summarise(n())
+        summarise(count=n())
+      
       
       plots1 <- suppressWarnings(plots%>%
                                    semi_join(sumMets,
@@ -220,7 +250,7 @@ plotPeaks <- function(plotData,
                                                                                                                  ifelse(adj.p.value<=0.05,"*",
                                                                                                                         ifelse(adj.p.value<=0.1,"'",
                                                                                                                                "ns"))))))%>%
-                                                                            filter(adj.p.value<=0.1)%>%
+                                                                            filter(adj.p.value<=pVal)%>%
                                                                             mutate(range=plotData%>%
                                                                                      filter(featureName==y&normMethod==z)%>%
                                                                                      ungroup()%>%
@@ -237,23 +267,21 @@ plotPeaks <- function(plotData,
                                                                           aes(xmin=group1, xmax=group2, 
                                                                               annotations=p.signif, 
                                                                               y_position=y.pos),
-                                                                          manual=TRUE,vjust=0.6, textsize=10,size=0.7))))
+                                                                          manual=TRUE,vjust=0.6, textsize=10,size=0.7)+
+                                                              scale_y_continuous(expand = expansion(mult = c(0.1,0.1)))
+                                                            )
+                                                         )
+                                          )
       )
       
-      
       plots <- bind_rows(plots1,anti_join(plots,sumMets,
-                                      by = c("normMethod", "featureName")))%>%
+                                          by = c("normMethod", "featureName")))%>%
         mutate(savedPlot=pmap(list(x=data,
-                                   y=featureName,z=normMethod,
-                                   a=factors1,b=form,
                                    p=savedPlot),
-                              function(x,y,z,a,b,p)
+                              function(x,p)
                                 (p+
                                    scale_x_discrete(breaks=x$factors2,
                                                     labels=x$factors4)+
-                                   #scale_y_continuous(
-                                  #   labels = scales::number_format(accuracy = 1,
-                                   #                                 decimal.mark = ','))+
                                    scale_colour_discrete(name=fillPlot,
                                                          breaks=waiver(),
                                                          labels=fillVector,
@@ -267,10 +295,8 @@ plotPeaks <- function(plotData,
     }else if (plotPlot&!plotP){
       plots <- bind_rows(plots)%>%
         mutate(savedPlot=pmap(list(x=data,
-                                   y=featureName,z=normMethod,
-                                   a=factors1,b=form,
                                    p=savedPlot),
-                              function(x,y,z,a,b,p)
+                              function(x,p)
                                 (p+
                                    scale_x_discrete(breaks=x$factors2,
                                                     labels=x$factors4)+
@@ -283,14 +309,17 @@ plotPeaks <- function(plotData,
                                                          aesthetics=c("colour","fill"))+
                                    scale_shape(name=fillPlot,
                                                breaks=waiver(),
-                                               labels=fillVector))))
+                                               labels=fillVector)
+                                 )
+                              )
+               )
     }
   }else if(!plotPeak){
     plots <- plotData%>%
       group_by(featureName,saveName)%>%
       mutate(sampleList=paste((oldSampleName),collapse=","))%>%
-      group_by(sampleList,add=TRUE)%>%
-      group_nest()
+      group_by(sampleList,.add=TRUE)%>%
+      nest()
   }
   if (plotPeak){
     plots <- plots%>%
@@ -306,9 +335,9 @@ plotPeaks <- function(plotData,
                                                                         gsub("(?<=[0-9])_(?=[0-9])",",",
                                                                              gsub("(ic.?(a|A)cid)", "ate",.x),
                                                                              perl=TRUE)
-                                                                        )
                                                                    )
-                                                        )+
+                                                   )
+                                                   )+
                                                    scale_color_discrete(name="Sample Class",
                                                                         breaks=sort(sample_sheet%>%
                                                                                       distinct(sampleClass)%>%
@@ -323,7 +352,7 @@ plotPeaks <- function(plotData,
                                                    theme(legend.position = "none",
                                                          axis.title=element_blank(),
                                                          plot.background = element_rect(fill = "transparent", color = NA)
-                                                         ),0.51,0.64,0.3,0.3),
+                                                   ),0.51,0.64,0.3,0.3),
                                      NA)
       )
       )
@@ -331,7 +360,7 @@ plotPeaks <- function(plotData,
   return(plots)
 }
 
-savePeaks <- function(plots,final.cmpd.df,
+savePeaks <- function(plots,met_model,
                       met_list=c(),pathway_list=c(),
                       norm_list=c(),
                       saveName,
@@ -344,10 +373,14 @@ savePeaks <- function(plots,final.cmpd.df,
     met_list=plots%>%
       distinct(featureName)
   }else if (!(is.null(pathway_list))){
-    met_list=plots%>%
-      inner_join(final.cmpd.df%>%
-                   filter(Pathway%in%pathway_list),by="KEGG_ID")%>%
-      distinct(featureName)
+    met_list=fuzzy_join(
+      met_model%>%
+        filter(Pathway%in%pathway_list),plotData,
+      by = c("MRF"="KEGG_ID"),
+      match_fun = str_detect,
+      mode = "right"
+    )%>%
+      pull(featureName)
   }else if(!(is.data.frame(met_list))){
     met_list=as.data.frame(met_list)%>%
       dplyr::rename(featureName="met_list")
@@ -398,7 +431,7 @@ comparisonFinder <- function(x){
   sapply(x, function(x){
     x1 <- strsplit(strsplit(x,"-")[[1]][1],":")[[1]]
     x2 <- strsplit(strsplit(x,"-")[[1]][2],":")[[1]]
-                
+    
     if(length(setdiff(x1,x2))==1){
       return(TRUE)
     }else{

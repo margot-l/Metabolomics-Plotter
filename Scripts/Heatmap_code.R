@@ -32,9 +32,10 @@ assignInNamespace(x="draw_colnames", value="draw_colnames_45",
 
 makeHeatmapTable <- function(met_data,
                              met_table=c(),
-                             y="foldChange",
-                             x="featureName",
-                             z="normMethod",
+                             value_y="foldChange",
+                             value_x="featureName",
+                             value_z="normMethod",
+                             model,
                              norm_list=c(),
                              met_list=c(),
                              pathway_name=c(),
@@ -51,7 +52,7 @@ makeHeatmapTable <- function(met_data,
       distinct(featureName,KEGG_ID)
   }else if (!(is.null(pathway_name))){
     met_list<- met_data%>%
-      inner_join(final.cmpd.df%>%
+      inner_join(model%>%
                    filter(Pathway==pathway_name),by="KEGG_ID")%>%
       distinct(featureName)
   }else if(!(is.data.frame(met_list))){
@@ -76,9 +77,7 @@ makeHeatmapTable <- function(met_data,
                 drop_na())%>%
     semi_join(norm_list%>%
                 drop_na())
-  
-  value_z <- as.symbol(z)
-  value_z <- enquo(value_z)
+
   
   if(data_mean){
     data_type <- "_mean"
@@ -92,30 +91,25 @@ makeHeatmapTable <- function(met_data,
   }
   
   max_val <- 0
-  
   min_val <- 0
   
   if((same_legend==T)&(sym_breaks==T)){
-    value_y <- as.symbol(y)
-    value_y <- enquo(value_y)
     max_val <- max(abs(filteredPlots%>%
-                         pull(!!(value_y))))
+                         pull(.data[[value_y]])))
     min_val <- -max(abs(filteredPlots%>%
-                          pull(!!(value_y))))
+                          pull(.data[[value_y]])))
   }else if((same_legend==T)&(sym_breaks==F)){
-    value_y <- as.symbol(y)
-    value_y <- enquo(value_y)
     max_val <- max(filteredPlots%>%
-                     pull(!!(value_y)))
+                     pull(.data[[value_y]]))
     min_val <- min(filteredPlots%>%
-                     pull(!!(value_y)))
+                     pull(.data[[value_y]]))
   }
   
   heatmap_data <<- filteredPlots%>%
-    mutate(saveName1=paste0((!!(value_z)), sort_type, "_", "heatmap"))%>%
-    group_by(!!(value_z),saveName1)%>%
+    mutate(saveName1=paste0(value_z, sort_type, "_", "heatmap"))%>%
+    group_by({{value_z}},saveName1)%>%
     group_nest()%>%
-    mutate(heatMap=map2(data,!!(value_z),possibly(~makeHeatmap(.x,
+    mutate(heatMap=map2(data,.data[[value_z]],possibly(~makeHeatmap(.x,
                                                                factors1=.x$factors,
                                                                value_y=y,
                                                                value_x=x,
@@ -152,13 +146,8 @@ makeHeatmap <- function(met_data,
                         sym_breaks=TRUE,
                         max_val,min_val,...){
   
-  value_y <- as.symbol(value_y)
-  value_y <- enquo(value_y)
-  
-  value_x <- as.symbol(value_x)
-  value_x <- enquo(value_x)
-  
-  Calc_pro_levels <- met_data%>% 
+
+  Calc_pro_levels <<- met_data%>% 
     ungroup()%>%
     mutate(factors2 = factors1%>%
              map(~as.character(interaction(as.list(.), sep='_', lex.order = TRUE)))%>%
@@ -168,8 +157,8 @@ makeHeatmap <- function(met_data,
              unlist())
   
   Summ_pro_levels <- Calc_pro_levels %>%
-    group_by_at(.vars=vars(c(factors3,unlist(factors1),quo_name(value_x))))%>%
-    summarise(!!(quo_name(value_y)):=mean((!!value_y),na.rm = T))%>%
+    group_by(factors3,unlist(factors1),{{value_x}})%>%
+    summarise({{value_y}}:=mean({{value_y}},na.rm = T))%>%
     ungroup()
   
   Summ_pro_levels <- Summ_pro_levels%>%
@@ -192,8 +181,8 @@ makeHeatmap <- function(met_data,
   
   # Hierarchical Clustering by Compound
   mat_pro_levels <- analysis_data%>%     
-    select(sample_group,!!quo(quo_name(value_x)),!!quo(quo_name(value_y)))%>% 
-    spread_("sample_group",quo_name(value_y))%>%
+    select(sample_group,.data[[value_x]],.data[[value_y]])%>% 
+    pivot_wider(sample_group,.data[[value_y]])%>%
     remove_missing()
   
   norm.data <<- mat_pro_levels
@@ -250,16 +239,16 @@ makeHeatmap <- function(met_data,
   if((max_val==0)&(min_val==0)){
     
     if (sym_breaks){
-      myBreaks <- c(seq(-(max(abs(pull(analysis_data,!!quo(quo_name(value_y)))))), 0,
+      myBreaks <- c(seq(-(max(abs(pull(analysis_data,.data[[value_y]])))), 0,
                         length.out=ceiling(300/2) + 1), 
-                    seq(max(abs(pull(analysis_data,!!quo(quo_name(value_y)))))/300,
-                        max(abs(pull(analysis_data,!!quo(quo_name(value_y))))),
+                    seq(max(abs(pull(analysis_data,.data[[value_y]])))/300,
+                        max(abs(pull(analysis_data,.data[[value_y]]))),
                         length.out=floor(300/2)))
     }else{
-      myBreaks <- c(seq(min(pull(analysis_data,!!quo(quo_name(value_y)))), 0,
+      myBreaks <- c(seq(min(pull(analysis_data,.data[[value_y]])), 0,
                         length.out=ceiling(300/2) + 1), 
-                    seq(max(pull(analysis_data,!!quo(quo_name(value_y))))/300,
-                        max(pull(analysis_data,!!quo(quo_name(value_y)))),
+                    seq(max(pull(analysis_data,.data[[value_y]]))/300,
+                        max(pull(analysis_data,.data[[value_y]])),
                         length.out=floor(300/2)))
     }
   }else{

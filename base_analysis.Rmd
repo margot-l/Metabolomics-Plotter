@@ -1,66 +1,36 @@
 ---
-title: "20221028_base_Analysis"
+title: "base_analysis"
 author: "Margot Lautens"
-date: '2022-10-28'
+updated: '2023-11-13'
 ---
 
-### Summary
+# Summary
 
 The goal of this program is to process LC-MS data from output chromXtractor by first removing low quality peaks then normalizing and finding which peaks and pathways are significant for your interaction of interest. Plots and heatmaps can also be generated.
 
+# Setup
+
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = getwd()) #Sets the current directory as your working directory.
-```
-
-```{r}
 
 # Required libraries
 library(tidyverse) # Required for syntax used in writing the function
 library(readr) # Required for easy loading
 
+experiment_name <- "example"
 ```
 
+## Load Required Datasets
 ```{r}
-sample_sheet <- read.csv("base_sample_sheet.csv")%>%
+sample_sheet <- read.csv("data/base_sample_sheet.csv")%>%
   filter(KCN!="1KCN")
 View(sample_sheet)
-```
 
-## Comments:
-
-## 'sample_sheet' must include the following columns:
-
-## - 'sampleName'
-
-## - 'Replicate'
-
-## - Each variable of interest (ie a drug treatment, mutant) must have one column
-
-## - Variables cannot include '-' ie 'kynu-1' should be written as 'kynu1'
-
-## - For concentrations, '0var' should be the buffer only and each concentration that follows \## '1col1', '2col1', etc with 'col1' as the column name ie a 'KCN' column would have '0KCN'
-
-## and '1KCN' while a 'Rot' column would have '0Rot' and '1Rot'.
-
-## - A 'Contents' column may be helpful ie the row where 'KCN''s value is '0', 'Contents' may \## say 'Buffer alone'; this is purely for human aid and will not be used by the program
-
-```{r}
-compounds <- read.csv("base_compounds.csv")
+compounds <- read.csv("data/base_compounds.csv")%>%
+    mutate(KEGG_ID=gsub("C","",KEGG_ID))
 View(compounds)
-```
 
-## Comments:
-
-## 'compounds' must include the following columns:
-
-## - 'featureName'
-
-## - 'featureClass' -\> whether a feature is a 'met' or a 'ref' (an internal reference)
-
-## - 'KEGG_ID' -\> the KEGG ID of each meatbolite, required for pathway information
-
-```{r}
-objectDataFrame <- read.csv("base_dataset2.csv",
+objectDataFrame <- read.csv("data/base_dataset2.csv",
                             sep=";")%>%
   mutate(oldSampleName=sampleName)%>%
   mutate(sampleName=gsub("20181010_","",sampleName))%>%
@@ -68,35 +38,23 @@ objectDataFrame <- read.csv("base_dataset2.csv",
 View(objectDataFrame)
 ```
 
-## Comments:
-
-## 'objectDataFrame' should be the result of a chromeXtractor run using samples that match the 'sample_sheet' and 'compounds'. The following columns should be generated automatically but be sure to double check.
-
-## 'objectDataFrame' must include the following columns:
-
-## - 'sampleName': must match the 'sampleName' from the 'sample_sheet'
-
-## - 'sampleClass': whether the sample is a 'blank' (ie a run black), a 'filter' (ie a rep blank) or a 'sample'
-
-## - 'featureName'
-
-## - 'featureClass'
-
-## - A value for each peak ie 'integratedIntensity' or 'maxIntensity'
-
+## Download or Load a Pathway File
 ```{r}
-source('Scripts/keggExtractor.R') # To generate the list of KEGG pathways
+library(readxl)
+cel_model <- read_excel("data/iCEL1314.xlsx")%>%
+  rename(HRF=`Human readable formula`)%>%
+  rename(MRF=`Machine readable formula`) # If using an existing file.
 
-final.cmpd.df <- keggExtractor("cel")
-View(final.cmpd.df)
+#source('scripts/keggExtractor.R') # To generate the list of KEGG pathways
+
+#cel_model <- keggExtractor("cel") # If downloading from KEGG.
+
+View(cel_model)
 ```
 
-## Comments:
-
-## Select the KEGG ID for whichever organism the LC-MS was run in, ie 'cel' is C.elegans, 'eco' is E.coli and 'sce' is S.cerevisiae. Full list: <https://www.genome.jp/kegg/catalog/org_list.html>
-
+# Clean and QC Data
 ```{r, warning=FALSE}
-source('Scripts/dataCleanup.R')  # For data cleanup functions.
+source('scripts/dataCleanup.R')  # For data cleanup functions.
 
 sampleData <- dataCleanup(objectDataFrame,
                           sampleTable=sample_sheet, 
@@ -134,10 +92,10 @@ View(sampleData)
 ```{r}
 ## !!! Important !!
 ## Must modify for your normalizations of interest.
-source('base_Normalization_Scripts.R') 
+source('scripts/base_Normalization_Scripts.R') 
 View(fn_model)
 
-pVal=0.05
+pVal=0.05 
 
 # This will normalize your data in each of the ways you list in your normalization scripts so that you can compare normalization methods.
 normData <- list_model%>%
@@ -145,8 +103,12 @@ normData <- list_model%>%
            nest(data=everything()),
          .id="normMethod")%>%
   unnest(normData)%>%
-  mutate(saveName=paste0(saveName,pVal,"_",normMethod,"_",featureName,"_"))
+  mutate(saveName=paste0(saveName,pVal,"_",normMethod,"_",featureName,"_"))%>%
+              mutate(experiment=experiment_name)
 
+write.table(normData%>%
+              select(-factors,-data), paste0(saveName,"norm.csv"),
+            quote=FALSE, sep=";", row.names=FALSE)
 #View(normData)
 ```
 
@@ -171,13 +133,18 @@ normData <- list_model%>%
 ## 'normData' will be your normalized data which will used throughout the following steps.
 
 ```{r, warning=FALSE}
-source('Scripts/analysisTools3.R') # To find significant peaks and plot them
+source('scripts/analysisTools2.R') # To find significant peaks and plot them
 
 sign_mets <- signANOVA(normData,
                        sampleData=sampleData,
-                       final.cmpd.df = final.cmpd.df,
+                       met_model = cel_model,
                        saveName=saveName,
-                       pVal=pVal)
+                       pVal=pVal,
+                       target="1KCN:1Rot-1KCN:0Rot" ,
+                       #This is to determine what the target comparison you're interested in is.
+                       show_all=TRUE
+                       )
+
 ```
 
 ## Comments:
@@ -191,7 +158,7 @@ sign_mets <- signANOVA(normData,
 ## 'sign_mets' is a dataframe of all the metabolites which passed your cutoff for each individual term:normalization interaction. The KEGG pathway(s) which those metabolites belong to are also listed.
 
 ```{r}
-source("Scripts/Heatmap_code.R") # To make heatmaps.
+source("scripts/Heatmap_code.R") # To make heatmaps.
 
 heatmap_table <- makeHeatmapTable(met_data = normData,
                                   # A table of features and nomalizations of interest as in 
@@ -201,7 +168,7 @@ heatmap_table <- makeHeatmapTable(met_data = normData,
                                   #met_list = c("L_Tryptophan","L_Malic_Acid"),
                                   # A vector of normalizations of interest, optional.
                                   #norm_list = c("mutantnorm"),
-                                  y = "foldChange",
+                                  value_y = "foldChange",
                                   # Do you want each rep or a mean of the reps.
                                   data_mean = TRUE,
                                   # Whether the data will be sorted by level or by clustering.
@@ -221,34 +188,29 @@ heatmap_table <- makeHeatmapTable(met_data = normData,
 ## 'y' must be a string.
 
 ```{r}
-source('Scripts/analysisTools3.R') # To find significant peaks and plot them
+source('scripts/analysisTools2.R') # To find significant peaks and plot them
 
-plots1 <- plotPeaks(normData, 
-                    # List of metabolites of interest. If all desired, use 'NULL'.
-                    met_list=NULL,
-                    # List of pathways of interest. If all desired, use 'NULL'.
-                    pathway_list = NULL,
-                    # The y axis variable.
-                    yPlot="foldChange", 
-                    # The variable which will be used to color the boxplots. Must be one of the
-                    # factors. If one of the factors you are analyzing is a mutant/strain, you
-                    # must use that as the fill.
-                    fillPlot="Mutant",
-                    # A vector of the labels for your fill variable.
-                    fillVector=c("N2","kynu-1(e1003)"),
-                    # The S4 object output of chromeXtractor, necessary is you would like to
-                    # plot the peaks.
+plots1 <- plotPeaks(normData,
+# The y axis variable.
+                    yPlot="foldChange",
+                    xPlot="KCN",
+# The variable which will be used to color the boxplots. Must be one of the factors. If one of the factors you are analyzing is a mutant/strain, you must use that as the fill.
+                    fillPlot="Rot",
+# A vector of the labels for your fill variable.
+                    fillVector=c("0.8% DMSO","12.5uM Rot"),
+# The S4 object output of chromeXtractor, necessary is you would like to plot the peaks.
                     integratedset=integratedset,
+                    samples=samples,
                     sampleData=sampleData,
-                    final.cmpd.df=final.cmpd.df,
-                    # Whether to plot the boxplots for each feature.
+                    met_model=cel_model,
+# Whether to plot the boxplots for each feature.
                     plotPlot=TRUE,
-                    # Whether to plot the pvalue brackets on the boxplots.
+# Whether to plot the pvalue brackets on the boxplots.
                     plotP=TRUE,
-                    # Whether to plot the mass spec peak for each feature.
-                    plotPeak=FALSE,
-                    samples,
-                    cBlacklist=c(),)
+# Whether to plot the mass spec peak for each feature.
+                    plotPeak=F)
+
+#save.image(paste0(saveName,".RData")) # Use if you'd like to save the plotData (useful for version control but will take a while to save and to open).
 ```
 
 ## Comments:
