@@ -110,13 +110,11 @@ writeTable <- function(writeData,met_list,
                        spreadFactor="Drug",factors=c("Replicate"),
                        saveName){
   for (i in ys){
-    qi=enquo(i)
-    qFactor=enquo(spreadFactor)
     col_vector=c("featureName",spreadFactor,factors,i)
     new_norm <- writeData%>%
       filter(featureName %in% met_list)%>%
-      select_(.dots=col_vector)%>%
-      spread(!!qFactor,!!qi)
+      select({{col_vector}})%>%
+      pivot_wider(.data[[spreadFactor]],.data[[i]])
     write.csv(new_norm,file=paste0(saveName,i,".csv"))
   }
 }
@@ -174,6 +172,7 @@ plotPeaks <- function(plotData,
     )
   
   if (plotPlot){
+    
     plots <<- plotData%>%
       ungroup()%>%
       group_by(normMethod,featureName,form,Time,factors1,saveName)%>%

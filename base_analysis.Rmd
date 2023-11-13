@@ -195,9 +195,9 @@ plots1 <- plotPeaks(normData,
                     yPlot="foldChange",
                     xPlot="KCN",
 # The variable which will be used to color the boxplots. Must be one of the factors. If one of the factors you are analyzing is a mutant/strain, you must use that as the fill.
-                    fillPlot="Rot",
+                    fillPlot="Mutant",
 # A vector of the labels for your fill variable.
-                    fillVector=c("0.8% DMSO","12.5uM Rot"),
+fillVector=c("WT","*kynu-1(e1003)*"),
 # The S4 object output of chromeXtractor, necessary is you would like to plot the peaks.
                     integratedset=integratedset,
                     samples=samples,
@@ -239,7 +239,7 @@ savePeaks(plots1,
 # A vector of pathways of interest, optional.
           #pathway_list = c("Tryptophan metabolism"),
 # A vector of metabolites of interest, optional. 
-          #met_list = rot_sign_mets%>%
+          met_list = c("Succinic_acid"), #rot_sign_mets%>%
     #select(-term,-normMethod),
 # A vector of normalizations of interest, optional.
           norm_list = c("mutantnorm"),

@@ -1,4 +1,4 @@
-sampleName,Mutant,Contents,sampleClass,KCN,Rot,Time (hrs),Replicate,Portion
+sampleName,Mutant,Contents,sampleClass,KCN,Rot,Time,Replicate,Portion
 MLMET0066,NA,Filter (dry),filter,NA,NA,NA,1,Pellet
 MLMET0067,NA,Filter (M9),filter,NA,NA,NA,1,Pellet
 MLMET0068,N2,M9,sample,0KCN,0Rot,6,1,Pellet

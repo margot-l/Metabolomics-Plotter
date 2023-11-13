@@ -1,6 +1,6 @@
 # Margot Lautens
 # Date created: 20170926
-# Last edited: 20170928
+# Last edited: 20231113
 # Code for plotting heat maps in R
 # Input is in the format of a tidy (longform) dataset of metabolite and sample
 # Adapted from code by Soumaya Zlitni and Julia Hanchard
@@ -74,10 +74,12 @@ makeHeatmapTable <- function(met_data,
   
   filteredPlots <- met_data%>%
     semi_join(met_list%>%
-                drop_na())%>%
+                drop_na(),
+              by = join_by(featureName, KEGG_ID))%>%
     semi_join(norm_list%>%
-                drop_na())
-
+                drop_na(),
+              by = join_by(normMethod))
+  
   
   if(data_mean){
     data_type <- "_mean"
@@ -105,22 +107,22 @@ makeHeatmapTable <- function(met_data,
                      pull(.data[[value_y]]))
   }
   
-  heatmap_data <<- filteredPlots%>%
+  heatmap_data <- filteredPlots%>%
     mutate(saveName1=paste0(value_z, sort_type, "_", "heatmap"))%>%
-    group_by({{value_z}},saveName1)%>%
+    group_by(.data[[value_z]],saveName1)%>%
     group_nest()%>%
     mutate(heatMap=map2(data,.data[[value_z]],possibly(~makeHeatmap(.x,
-                                                               factors1=.x$factors,
-                                                               value_y=y,
-                                                               value_x=x,
-                                                               value_z=.y,
-                                                               data_sort = data_sort,
-                                                               data_mean = data_mean,
-                                                               con_names = con_names,
-                                                               sym_breaks = sym_breaks,
-                                                               max_val=max_val,
-                                                               min_val=min_val),
-                                                  NA,quiet=FALSE)
+                                                                    value_y=value_y,
+                                                                    value_x=value_x,
+                                                                    value_z=.y,
+                                                                    factors1=.x$factors,
+                                                                    data_sort = data_sort,
+                                                                    data_mean = data_mean,
+                                                                    con_names = con_names,
+                                                                    sym_breaks = sym_breaks,
+                                                                    max_val=max_val,
+                                                                    min_val=min_val),
+                                                       NA,quiet=FALSE)
     )
     )
   
@@ -146,22 +148,23 @@ makeHeatmap <- function(met_data,
                         sym_breaks=TRUE,
                         max_val,min_val,...){
   
-
-  Calc_pro_levels <<- met_data%>% 
+  
+  Calc_pro_levels <- met_data%>% 
     ungroup()%>%
-    mutate(factors2 = factors1%>%
+    mutate(factors2 = factors%>%
              map(~as.character(interaction(as.list(.), sep='_', lex.order = TRUE)))%>%
              unlist(),
-           factors3 = factors1%>% 
+           factors3 = factors%>% 
              imap(~interaction(met_data[.y, match(.x, names(met_data))], sep="_", lex.order = TRUE))%>%
              unlist())
   
   Summ_pro_levels <- Calc_pro_levels %>%
-    group_by(factors3,unlist(factors1),{{value_x}})%>%
-    summarise({{value_y}}:=mean({{value_y}},na.rm = T))%>%
-    ungroup()
+    ungroup()%>%
+    group_by(across(all_of(c("factors3",unlist(factors1),value_x))))%>%
+    reframe("{value_y}":=mean(.data[[value_y]],na.rm = T))
   
   Summ_pro_levels <- Summ_pro_levels%>%
+    ungroup()%>%
     rename(sample_group = factors3)
   
   
@@ -181,11 +184,12 @@ makeHeatmap <- function(met_data,
   
   # Hierarchical Clustering by Compound
   mat_pro_levels <- analysis_data%>%     
-    select(sample_group,.data[[value_x]],.data[[value_y]])%>% 
-    pivot_wider(sample_group,.data[[value_y]])%>%
+    select(-unlist(factors1))%>% 
+    pivot_wider(names_from=sample_group,
+                values_from=.data[[value_y]])%>%
     remove_missing()
   
-  norm.data <<- mat_pro_levels
+  norm.data <- mat_pro_levels
   #norm.data <- norm.data[rowSums(is.na(norm.data))==0, ]
   
   if(dim(norm.data)[1]>15000){
@@ -198,7 +202,7 @@ makeHeatmap <- function(met_data,
   
   # save the Metabolite data as a vector
   met <- norm.data%>%
-    pull(quo_name(value_x))
+    pull(.data[[value_x]])
   
   # convert the data to a matrix for the heatmap.2() function. 
   #Have to do that only for the numeric data so the Metabolite column is saved as a vector
@@ -260,9 +264,9 @@ makeHeatmap <- function(met_data,
   
   fontsize=100/((nrow(norm.data.matrix)^0.15))
   
-  annotation_col <<- as.data.frame(analysis_data%>%
-                                     group_by_at(.vars=c("sample_group",unlist(factors1)))%>%
-                                     summarise())
+  annotation_col <- as.data.frame(analysis_data%>%
+                                     group_by(across(all_of(c("sample_group",unlist(factors1)))))%>%
+                                     reframe())
   
   rownames(annotation_col) <- annotation_col[,1]
   annotation_col[,1] <- NULL
@@ -328,12 +332,8 @@ saveHeatmap <- function(heatmap_table,
   }else{
     save_plot(paste0(data_date,
                      data_type, 
-                     data_sort, "_", "heatmap",filetype),
+                    data_sort, "_", "heatmap",filetype),
               p,limitsize = FALSE,
               base_height=7*1,base_width = 10*1)
   }
 }
-
-
-
-
